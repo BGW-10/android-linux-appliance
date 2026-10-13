@@ -1,6 +1,8 @@
-# OnePlus 5 Appliance Userspace
+# Android Appliance Userspace
 
-This repository contains the configuration and startup scripts used to turn a rooted OnePlus 5 running LineageOS into a small always-on Linux appliance.
+This repository contains the configuration and startup scripts used to turn a rooted android phone into a small always-on Linux appliance.
+
+Currently, I am testing with two phones: A rooted OnePlus 5 running LineageOS, and a rooted Moto G Stylus (2025) running the stock software, but debloated.
 
 The phone continues to boot Android normally. Magisk runs the Android-side startup scripts, which mount the Debian chroot and launch a lightweight `runit` service supervisor inside Debian.
 
@@ -9,7 +11,7 @@ The goal is to keep the appliance reproducible: rather than manually configuring
 ## Architecture
 
 ```text
-OnePlus 5
+Oneplus 5 / Moto G Stylus
 └── LineageOS / Android
     ├── Android init (real PID 1)
     ├── Magisk
@@ -109,7 +111,6 @@ This layout should be retained as more configuration is added.
 
 The phone should have:
 
-- OnePlus 5 running LineageOS;
 - unlocked bootloader;
 - Magisk/root access;
 - `chroot-distro` installed and working;

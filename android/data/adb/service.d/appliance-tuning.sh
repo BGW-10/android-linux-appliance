@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 #
-# OnePlus 5 / LineageOS appliance tuning
+# Android appliance tuning
 #
 # Intended to run from Magisk service.d.
 #

@@ -1,0 +1,6 @@
+id=extra_system_binaries
+name=Extra System Binaries
+version=1.0
+versionCode=1
+author=Local
+description=Additional Android-compatible command-line utilities

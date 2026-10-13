@@ -1,0 +1,8 @@
+Placeholder file to preserve this empty directory in Git.
+
+Place Android-compatible ARM64 executables in this directory.
+Magisk exposes these files under /system/bin/.
+
+Remove this placeholder when packaging the module for installation.
+
+Currently used for iw on the Moto G Stylus. iw is already included on the OnePlus 5 w/ LineageOS.

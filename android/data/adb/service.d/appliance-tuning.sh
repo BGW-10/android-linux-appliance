@@ -27,6 +27,21 @@ disable_wifi_power_save() {
     esac
 }
 
+keep_usb_awake() {
+    for device in /sys/bus/usb/devices/*; do
+        [ -r "$device/idVendor" ] && [ -r "$device/idProduct" ] || continue
+        id="$(cat "$device/idVendor"):$(cat "$device/idProduct")"
+        case " $USB_IDS " in *" $id "*) ;; *) continue ;; esac
+        [ -w "$device/power/control" ] || continue
+        [ "$(cat "$device/power/control")" = auto ] || continue
+        if printf 'on\n' > "$device/power/control"; then
+            echo "Disabled autosuspend for USB $id (${device##*/})"
+        else
+            /system/bin/log -p w -t appliance-tuning "Could not keep USB $id awake"
+        fi
+    done
+}
+
 # Android still owns CPU scaling, thermal protection, and charging safety.
 /system/bin/cmd deviceidle disable || echo 'Could not disable Doze'
 /system/bin/cmd power set-mode 0 || echo 'Could not disable Battery Saver'
@@ -62,16 +77,23 @@ if [ "$DISABLE_WIFI_POWER_SAVE" = 1 ]; then
     fi
 fi
 
-echo 'Checking selected USB devices every 30 seconds'
+# Use callback mode for immediate event delivery through the pipe. The child
+# shell reads SUBSYSTEM/ACTION supplied by uevent; no event text is evaluated.
 while true; do
-    for device in /sys/bus/usb/devices/*; do
-        [ -r "$device/idVendor" ] && [ -r "$device/idProduct" ] || continue
-        id="$(cat "$device/idVendor"):$(cat "$device/idProduct")"
-        case " $USB_IDS " in *" $id "*) ;; *) continue ;; esac
-        [ -w "$device/power/control" ] || continue
-        [ "$(cat "$device/power/control")" = auto ] || continue
-        printf 'on\n' > "$device/power/control" ||
-            /system/bin/log -p w -t appliance-tuning "Could not keep USB $id awake"
-    done
-    sleep 30
+    echo 'Starting USB device monitor'
+    # shellcheck disable=SC2016
+    /data/adb/magisk/busybox uevent /data/adb/magisk/busybox sh -c '
+        case "${SUBSYSTEM:-}:${ACTION:-}" in
+            usb:add|usb:bind|usb:change) printf "%s\n" "$ACTION" ;;
+        esac
+    ' | {
+        # Cover already-attached devices on startup and after a monitor restart.
+        keep_usb_awake
+        while IFS= read -r event; do
+            echo "USB $event event; checking selected devices"
+            keep_usb_awake
+        done
+    }
+    echo 'USB device monitor exited; restarting in 5 seconds'
+    sleep 5
 done

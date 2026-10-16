@@ -47,12 +47,18 @@ objects; it did not produce a deployable vendor module distribution.
   shell syntax, and a temporary runit service exercise. They have not been
   installed/reboot-tested on the phone. No charging-control or fake-SOC write
   was performed in those checks.
-- The current review adds a shared Android boot helper, a root service
+- Appliance revision `830087d` added a shared Android boot helper, a root service
   environment, and the disabled charging script under `service.d`; printer
   application service files were removed. All eight shell files passed
   ShellCheck and BusyBox ash/host sh syntax checks. Temporary host checks
   exercised boot-wait success, delay, timeout, and the disabled charging path.
   This work adds no live-device or kernel-build results.
+- The Wi-Fi link-event monitor was restored, and USB tuning now uses a
+  BusyBox `uevent` listener. Temporary host checks covered both event paths and
+  restart behavior. A read-only phone check confirmed Magisk BusyBox 1.36.1.1
+  includes `uevent`; a five-second passive listener opened without error but
+  received no events. The updated tuning script has not been deployed, and
+  USB unplug/replug validation remains pending.
 
 ## Deployment order
 

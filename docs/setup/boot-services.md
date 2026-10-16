@@ -143,7 +143,10 @@ Keep it on a trusted management LAN, retain host-key authentication, and use
   next boot. Manage running services with `sv`; see the wake-lock notes in the
   [service guide](../services/runit.md#keeping-the-phone-awake).
 - **Tuning:** edit the USB IDs, Wi-Fi interface, or Wi-Fi switch at the top of
-  `appliance-tuning.sh`. Its small loop handles USB reconnects every 30 seconds.
+  `appliance-tuning.sh`. Magisk BusyBox's `uevent` listener triggers USB checks
+  on add, driver-bind, and change events. Each listener start also scans devices
+  already attached. Only matching `USB_IDS` get `power/control=on`; the listener
+  restarts after five seconds if it exits.
   Wi-Fi uses the original link-event monitor: apply at startup, then reapply and
   verify two seconds after `state UP`; restart the monitor after five seconds
   if it exits. Events and Wi-Fi results go to `appliance-tuning.log`.
@@ -155,6 +158,15 @@ Keep it on a trusted management LAN, retain host-key authentication, and use
 - **Charging:** `ENABLE_CHARGING_INHIBIT=0` skips the request on future runs.
   Clearing an already-applied vote requires the manual rollback in the
   [charging guide](../devices/mona/usb-power.md#optional-charging-inhibition).
+
+USB monitoring requires the Magisk BusyBox `uevent` applet. Check it in an
+Android root shell with `/data/adb/magisk/busybox uevent --help`. This is a
+separate kernel-event listener; Android's own device manager keeps running.
+The script uses [BusyBox's per-event callback](https://github.com/mirror/busybox/blob/master/util-linux/uevent.c)
+to filter USB events before requesting a scan. It does not use a periodic USB
+scan, so a later policy write to `power/control` without a USB event will not
+be corrected automatically. Check the actual adapter after unplug/replug and
+confirm its `power/control` reports `on`.
 
 Rollback means restoring the saved scripts and helper together and doing
 another attended reboot. A reboot clears this launcher's wake lock.
@@ -170,6 +182,14 @@ inhibition into the normal Android layout. All eight current shell files passed
 ShellCheck and syntax checks with BusyBox ash and host sh. Temporary host checks
 covered an already-completed boot, delayed boot, the timeout, and the disabled
 charging script. They used stubs for Android properties and sleep.
+
+The restored Wi-Fi monitor passed temporary checks for link-up handling,
+readback failures, restart, and its disable switch. USB checks covered existing
+and newly attached devices, driver-bind/change events, VID:PID filtering,
+missing control nodes, ignored events, and listener restart. These used host
+fixtures. On Mona, the Magisk BusyBox `uevent` applet was confirmed and a passive
+five-second listener opened without error; no events arrived during that sample.
+Actual USB unplug/replug validation remains pending.
 
 Phone installation and reboot checks remain pending. The earlier ADB-script
 deployment on Mona is recorded in

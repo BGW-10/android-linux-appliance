@@ -1,8 +1,0 @@
-#!/bin/sh
-# Capture startup errors; the application's own log is in printer_data/logs.
-set -eu
-umask 027
-logdir=/var/log/klipper
-mkdir -p "$logdir"
-printf 's1048576\nn5\n' > "$logdir/config"
-exec /usr/bin/svlogd -tt "$logdir"

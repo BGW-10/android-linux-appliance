@@ -1,65 +1,54 @@
-# Android appliance scripts
+# Android appliance scripts and documentation
 
-Small shell scripts and a Debian overlay for a rooted Android phone running
-SSH, Klipper, Moonraker, and related services. The current phone is a Moto G
-Stylus 5G (2025), `mona`, with Magisk and a `debian-trixie` chroot.
+A small Android/Debian setup for using rooted phones as Klipper hosts. Runtime
+scripts stay short and readable; this repository also collects the device,
+kernel, installation, and operation guides in one place.
+
+Android boot scripts and Debian services run as **root**, with `/root` as the
+Debian home directory.
 
 ## Start here
 
-- [Install or update the scripts](docs/mona-appliance.md)
-- [Add and manage runit services](docs/runit.md)
-- [All documentation](docs/README.md)
-- [Batteryless power and printed-cover hardware](https://github.com/BGW-10/moto-g-stylus-2025-kernel/blob/mona-appliance/docs/mona/hardware.md)
+- [Setup sequence](docs/getting-started.md) — from a rooted phone to running services.
+- [Documentation index](docs/README.md) — browse by device or task.
+- [Moto G Stylus 2025 / Mona](docs/devices/mona/README.md).
+- [OnePlus 5 / cheeseburger](docs/devices/oneplus5/README.md).
+- [Add a runit service](docs/services/runit.md).
 
-## How it works
+The `mona-appliance` branch is for review and testing before merging into `main`.
+Device observations, host checks, and pending deployment work are identified in
+the guides. See [sources and revisions](docs/reference/sources.md).
+
+## Runtime layout
 
 ```text
 Magisk service.d
-├── enable-tcp-adb.sh     enable authenticated ADB on TCP 5555
-├── appliance-tuning.sh   disable Doze/Battery Saver; keep selected USB/Wi-Fi awake
-└── start-debian.sh       mount Debian and run start-services
+├── enable-tcp-adb.sh     authenticated TCP 5555
+├── appliance-tuning.sh   Doze/Battery Saver and selected USB/Wi-Fi settings
+├── charging-inhibit.sh   Mona charging request; disabled by default
+└── start-debian.sh       mount Debian and launch runit
     └── runsvdir /etc/service
-        └── one runsv per enabled service: sshd, klipper, moonraker, ...
+        └── one runsv per enabled foreground service
 ```
 
-Edit settings at the top of the relevant script. Each Android script stands
-alone. Adding a Debian service requires no change to the Android boot scripts.
-The Debian launcher takes a kernel wake lock so screen-off does not suspend
-the appliance; it stays held until reboot or a deliberate manual release.
-
-| Directory | What belongs here |
+| Directory | Contents |
 | --- | --- |
-| `android/` | Files copied to the matching Android paths. |
-| `debian/` | Files copied to the matching paths inside Debian. |
-| `examples/runit/` | Klipper and Moonraker service examples; edit before enabling. |
-| `examples/android/` | Optional charging-inhibit experiment, disabled by default. |
-| `klipper/ender3-v3-ke/` | Existing printer configuration. |
+| `android/data/adb/service.d/` | Android boot scripts, including optional charging inhibition. |
+| `android/data/adb/appliance/common.sh` | Shared Android boot-wait helper; install before the scripts. |
+| `android/data/adb/modules/` | Existing Magisk binary overlay. |
+| `debian/` | Chroot launcher and SSH runit service; add your own services here. |
+| `klipper/ender3-v3-ke/` | Existing printer-specific configuration; review paths and hardware before use. |
+| `docs/` | Shared setup, Android tools, services, and device-specific instructions. |
 
-## Adding a service
+Settings live at the top of each script. Add Debian services by creating an
+executable `/etc/sv/NAME/run` and linking it into `/etc/service`; no Android
+startup edit is needed. Use `sv status`, `sv up`, `sv down`, and `sv restart`.
+Stop/restart printer services only while idle with heaters off.
 
-Create an executable `/etc/sv/my-service/run` that ends with
-`exec /path/to/program --foreground`. Enable it with:
+The runit definitions are installed under `/etc/sv`; only links in
+`/etc/service` enable them. Install and verify each application before linking it.
 
-```sh
-ln -s /etc/sv/my-service /etc/service/my-service
-```
-
-Runit discovers it automatically and restarts it if it exits. The
-[service guide](docs/runit.md) includes a complete example, logging, disabling
-services, and the Klipper/Moonraker setup.
-
-## Everyday commands
-
-Inside Debian, as root:
-
-```sh
-sv status /etc/service/*
-sv up /etc/service/klipper
-sv -w 20 down /etc/service/klipper
-sv -w 20 restart /etc/service/moonraker
-```
-
-Use stop/restart commands only when the printer is idle and heaters are off.
-Android keeps its CPU, thermal, charging, and SELinux policies. Fake SOC remains
-manual. Persistent ADB keeps host-key authentication and belongs on a trusted
-management network.
+Android retains CPU, thermal, charging, and SELinux policy. The launcher holds
+`klipper-appliance` until reboot or explicit release to prevent suspend.
+Fake SOC remains manual; electrical protection and firmware recovery are
+separate from the reported battery percentage.

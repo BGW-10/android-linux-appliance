@@ -1,17 +1,32 @@
-# Documentation
+# Appliance documentation
 
 [Repository home](../README.md)
 
-| Guide | Scope |
-| --- | --- |
-| [Mona installation](mona-appliance.md) | Copy the standalone scripts, enable persistent ADB, update, and roll back. |
-| [Adding runit services](runit.md) | A small service example, logging, Klipper/Moonraker templates, and everyday sv commands. |
-| [Mona hardware and printed cover](https://github.com/BGW-10/moto-g-stylus-2025-kernel/blob/mona-appliance/docs/mona/hardware.md) | AliExpress ideal-diode leads, budget alternatives, GX12 wiring, cooling, and electrical qualification. |
-| [Debian architecture](debian-architecture-explained.md) | How Android, Magisk, Termux, and the chroot fit together. |
-| [OnePlus rooting and Debian setup](root-lineageos-debian-guide.md) | Historical OnePlus/LineageOS provisioning; use the current installer for boot scripts. |
-| [Android debloating](android-debloat.md) | Existing package-management notes. |
-| [Kernel build guide](kernel-build-guide.md) | Existing kernel build notes; check device/release applicability. |
-| [Kernel maintainer guide](kernel-modification-maintainer-guide.md) | Existing kernel maintenance notes. |
-| [Android iw build guide](aosp-iw-android-build-guide.md) | Building the Wi-Fi utility used by tuning. |
+Start with [the setup sequence](getting-started.md). Each procedure names the
+shell it uses: build host, Android root shell, or Debian root. Debian services
+and SSH use `root`, with application files under `/root`.
+Use the page for your exact device when handling ROMs, kernels, or partitions.
 
-Mona kernel and hardware investigation: [moto-g-stylus-2025-kernel docs](https://github.com/BGW-10/moto-g-stylus-2025-kernel/tree/mona-appliance/docs/mona).
+## Devices
+
+| Device | Start here | Device-specific work |
+| --- | --- | --- |
+| Moto G Stylus 5G (2025), `mona` | [Mona](devices/mona/README.md) | Android 16 kernel, manual fake SOC, XL4015 power, USB-C protection, GX12/printed cover, cooling. |
+| OnePlus 5, `cheeseburger` | [OnePlus 5](devices/oneplus5/README.md) | LineageOS 22.2/root, MSM8998 kernel, USB serial/CAN/webcam support, recovery. |
+
+## Shared setup and operation
+
+| Guide | Use it for |
+| --- | --- |
+| [How the system fits together](architecture.md) | Android versus Debian responsibilities, mounts, networking, and runit. |
+| [Debian installation](setup/debian.md) | Termux/chroot-distro, ARM64 rootfs, Android groups, SSH keys, PAM/fscrypt troubleshooting. |
+| [Boot scripts](setup/boot-services.md) | Install/update scripts and the shared helper, persistent ADB, verification, and rollback. |
+| [Runit services](services/runit.md) | Add a service, enable/disable it, inspect logs, and manage the wake lock. |
+| [ADB and network access](android/adb.md) | USB/root shells, TCP 5555, address changes, and recovery. |
+| [Build/install Android iw](android/iw.md) | NDK build and the existing Magisk binary overlay. |
+| [Android package trimming](android/debloat.md) | Reversible package changes and the historical OnePlus package list. |
+| [Sources and revisions](reference/sources.md) | Imported documentation, source snapshots, validation scope, and old page locations. |
+
+Kernel instructions run in the corresponding **kernel checkout**. The scripts
+and service definitions live in this repository. Hardware proposals and old
+observations are labeled separately from steps already validated on a phone.

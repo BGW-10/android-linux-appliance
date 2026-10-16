@@ -5,12 +5,9 @@ CHROOT_DISTRO=/system/bin/chroot-distro
 
 umask 077
 exec >/data/local/tmp/start-debian.log 2>&1
-remaining=90
-while [ "$(/system/bin/getprop sys.boot_completed)" != 1 ]; do
-    [ "$remaining" -gt 0 ] || { echo 'Android boot timed out'; exit 1; }
-    sleep 2
-    remaining=$((remaining - 1))
-done
+# shellcheck source=../appliance/common.sh
+. /data/adb/appliance/common.sh || exit 1
+wait_for_android_boot || exit 1
 
 # One mount attempt, then one supervisor. Do not restart the printer stack here.
 echo "Mounting $DISTRO"

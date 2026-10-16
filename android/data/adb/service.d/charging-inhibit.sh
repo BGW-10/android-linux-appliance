@@ -1,13 +1,21 @@
 #!/system/bin/sh
-# Optional Mona-only experiment. Read docs/mona-appliance.md before enabling.
+# Mona only. Read docs/devices/mona/usb-power.md before enabling.
 ENABLE_CHARGING_INHIBIT=0
 CHARGING_HARDWARE_QUALIFIED=0
 [ "$ENABLE_CHARGING_INHIBIT" = 1 ] || exit 0
-[ "$CHARGING_HARDWARE_QUALIFIED" = 1 ] || exit 1
-[ "$(/system/bin/getprop ro.product.device)" = mona ] || exit 1
 
 umask 077
 exec >/data/local/tmp/charging-inhibit.log 2>&1
+[ "$CHARGING_HARDWARE_QUALIFIED" = 1 ] || {
+    echo 'Qualify the power hardware before enabling charging inhibition'
+    exit 1
+}
+[ "$(/system/bin/getprop ro.product.device)" = mona ] || {
+    echo 'Charging inhibition is supported here only on Mona'
+    exit 1
+}
+
+# Request inhibition as soon as this control exists; do not wait for full boot.
 charger=/sys/class/power_supply/battery/device
 remaining=60
 while [ ! -w "$charger/force_charging_disable" ]; do

@@ -3,13 +3,9 @@
 umask 077
 exec >/data/local/tmp/enable-tcp-adb.log 2>&1
 
-# Give Android up to three minutes to boot.
-remaining=90
-while [ "$(/system/bin/getprop sys.boot_completed)" != 1 ]; do
-    [ "$remaining" -gt 0 ] || { echo 'Android boot timed out'; exit 1; }
-    sleep 2
-    remaining=$((remaining - 1))
-done
+# shellcheck source=../appliance/common.sh
+. /data/adb/appliance/common.sh || exit 1
+wait_for_android_boot || exit 1
 
 [ "$(/system/bin/getprop ro.adb.secure)" = 1 ] || {
     echo 'Expected authenticated ADB; leaving adbd unchanged'

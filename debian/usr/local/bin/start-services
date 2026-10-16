@@ -3,6 +3,7 @@
 set -eu
 [ "$#" -eq 0 ] || { echo 'Use sv to stop, restart, or inspect services.' >&2; exit 2; }
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root USER=root LOGNAME=root
 mkdir -p /etc/service /run
 
 # Keep the appliance awake until reboot or an explicit manual release.

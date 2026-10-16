@@ -13,12 +13,56 @@ exec >/data/local/tmp/appliance-tuning.log 2>&1
 . /data/adb/appliance/common.sh || exit 1
 wait_for_android_boot || exit 1
 
+disable_wifi_power_save() {
+    [ -d "/sys/class/net/$WIFI_INTERFACE" ] || return 1
+    if ! /system/bin/iw dev "$WIFI_INTERFACE" set power_save off >/dev/null 2>&1; then
+        echo "WARNING: Could not disable Wi-Fi power saving on $WIFI_INTERFACE"
+        return 1
+    fi
+
+    state=$(/system/bin/iw dev "$WIFI_INTERFACE" get power_save 2>/dev/null)
+    case "$state" in
+        *'Power save: off'*) echo "Wi-Fi power save disabled on $WIFI_INTERFACE" ;;
+        *) echo "WARNING: Wi-Fi power save state: ${state:-unknown}"; return 1 ;;
+    esac
+}
+
 # Android still owns CPU scaling, thermal protection, and charging safety.
 /system/bin/cmd deviceidle disable || echo 'Could not disable Doze'
 /system/bin/cmd power set-mode 0 || echo 'Could not disable Battery Saver'
 /system/bin/settings put global low_power_trigger_level 0 || echo 'Could not change Battery Saver threshold'
-echo 'Checking selected USB devices and Wi-Fi every 30 seconds'
 
+# Apply once, then reapply after link-up events as in the original monitor.
+if [ "$DISABLE_WIFI_POWER_SAVE" = 1 ]; then
+    if [ -x /system/bin/iw ]; then
+        disable_wifi_power_save
+        if [ -x /system/bin/ip ]; then
+            (
+                while true; do
+                    echo "Starting $WIFI_INTERFACE link monitor"
+                    /system/bin/ip monitor link dev "$WIFI_INTERFACE" |
+                    while IFS= read -r event; do
+                        case "$event" in
+                            *'state UP'*)
+                                echo "$WIFI_INTERFACE reached state UP; checking Wi-Fi power save"
+                                sleep 2
+                                disable_wifi_power_save
+                                ;;
+                        esac
+                    done
+                    echo 'Wi-Fi link monitor exited; restarting in 5 seconds'
+                    sleep 5
+                done
+            ) &
+        else
+            echo 'WARNING: /system/bin/ip missing; Wi-Fi link monitoring unavailable'
+        fi
+    else
+        echo 'WARNING: /system/bin/iw missing; Wi-Fi power saving left unchanged'
+    fi
+fi
+
+echo 'Checking selected USB devices every 30 seconds'
 while true; do
     for device in /sys/bus/usb/devices/*; do
         [ -r "$device/idVendor" ] && [ -r "$device/idProduct" ] || continue
@@ -29,10 +73,5 @@ while true; do
         printf 'on\n' > "$device/power/control" ||
             /system/bin/log -p w -t appliance-tuning "Could not keep USB $id awake"
     done
-    if [ "$DISABLE_WIFI_POWER_SAVE" = 1 ] && [ -x /system/bin/iw ] &&
-       [ -d "/sys/class/net/$WIFI_INTERFACE" ]; then
-        /system/bin/iw dev "$WIFI_INTERFACE" set power_save off >/dev/null 2>&1 ||
-            /system/bin/log -p w -t appliance-tuning 'Could not disable Wi-Fi power saving'
-    fi
     sleep 30
 done

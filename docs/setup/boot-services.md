@@ -144,6 +144,9 @@ Keep it on a trusted management LAN, retain host-key authentication, and use
   [service guide](../services/runit.md#keeping-the-phone-awake).
 - **Tuning:** edit the USB IDs, Wi-Fi interface, or Wi-Fi switch at the top of
   `appliance-tuning.sh`. Its small loop handles USB reconnects every 30 seconds.
+  Wi-Fi uses the original link-event monitor: apply at startup, then reapply and
+  verify two seconds after `state UP`; restart the monitor after five seconds
+  if it exits. Events and Wi-Fi results go to `appliance-tuning.log`.
   To stop applying tuning, remove executable permission and reboot. Re-enable
   Doze with `cmd deviceidle enable` if needed, and restore your chosen Battery
   Saver settings/threshold in Android. The threshold setting persists across

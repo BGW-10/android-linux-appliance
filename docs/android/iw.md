@@ -148,9 +148,13 @@ chcon u:object_r:system_file:s0 "$module/system/bin" "$module/system/bin/iw"
 ```
 
 Reboot during maintenance, then verify `/system/bin/iw --version` and the
-power-save query. `appliance-tuning.sh` already checks Wi-Fi every 30 seconds;
-there is no need for a second `disable-wifi-powersave.sh` service. Retire an old
-copy if it duplicates that policy. The overlay follows
+power-save query. `appliance-tuning.sh` applies and verifies power-save off at
+startup, then uses `/system/bin/ip monitor link dev wlan0` to watch link events
+(or the interface set by `WIFI_INTERFACE`). Each `state UP` event triggers a
+two-second delay followed by another apply/readback. If the monitor exits, it
+restarts after five seconds. Inspect `/data/local/tmp/appliance-tuning.log` for
+the events and readback results. Retire a separate `disable-wifi-powersave.sh`
+if it duplicates that policy. The overlay follows
 [Magisk module layout](https://topjohnwu.github.io/Magisk/guides.html).
 
 Disable the overlay by creating `$module/disable` and rebooting, or use the

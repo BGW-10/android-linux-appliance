@@ -6,6 +6,9 @@ Target: **OnePlus 5**, codename `cheeseburger`, Snapdragon 835/MSM8998,
 LineageOS 22.2 and a 4.4 kernel. These boot/recovery commands are specific to this
 phone; the OnePlus 5T (`dumpling`) and Mona have different device requirements.
 
+**AI usage:** These guides were consolidated and revised with AI assistance.
+See [sources](../../reference/sources.md#ai-usage) and [evidence and limits](#evidence-and-limits).
+
 ## Setup path
 
 1. [Install LineageOS and Magisk](lineageos-root.md), or verify the existing setup.

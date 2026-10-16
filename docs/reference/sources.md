@@ -8,6 +8,14 @@ their respective repositories; check their actual contents when updating a
 procedure. This review consolidates documentation and simplifies userspace
 files; it does not include a new kernel build or phone deployment.
 
+## AI usage
+
+AI tools, including OpenAI Codex and ChatGPT, assisted with script changes,
+documentation writing and consolidation, and hardware research. Imported
+material retains the source attribution below. Completed checks and pending
+device or electrical tests are recorded in the guides; see
+[how to read validation claims](#how-to-read-validation-claims).
+
 ## Imported material
 
 | Source snapshot | Material used |

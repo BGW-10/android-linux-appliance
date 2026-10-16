@@ -7,6 +7,9 @@ shell it uses: build host, Android root shell, or Debian root. Debian services
 and SSH use `root`, with application files under `/root`.
 Use the page for your exact device when handling ROMs, kernels, or partitions.
 
+**AI usage:** These guides were created, consolidated, or revised with AI
+assistance. See [sources and validation](reference/sources.md#ai-usage).
+
 ## Devices
 
 | Device | Start here | Device-specific work |

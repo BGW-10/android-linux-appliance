@@ -6,6 +6,10 @@ Target: `mona`, Android 16, custom Linux 6.6.118. The observed phone was already
 rooted and booting its USB-serial kernel. This documentation does not establish
 a new-stock-device unlock/root procedure or compatibility with another firmware.
 
+**AI usage:** These guides and hardware recommendations were developed with
+AI assistance. See [sources](../../reference/sources.md#ai-usage) and the
+[validation record](validation.md) for completed checks and pending device tests.
+
 ## Setup path
 
 1. [Confirm ADB/root](../../android/adb.md) and record `ro.build.fingerprint`.

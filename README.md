@@ -7,6 +7,10 @@ kernel, installation, and operation guides in one place.
 Android boot scripts and Debian services run as **root**, with `/root` as the
 Debian home directory.
 
+**AI usage:** Parts of the scripts and documentation were created or revised
+with AI assistance, including OpenAI Codex and ChatGPT. See
+[sources and validation](docs/reference/sources.md#ai-usage) for scope and checks.
+
 ## Start here
 
 - [Setup sequence](docs/getting-started.md) — from a rooted phone to running services.

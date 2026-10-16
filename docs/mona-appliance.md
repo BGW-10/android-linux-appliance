@@ -172,6 +172,10 @@ not replace the service-owned wake lock.
 
 ## Optional charging inhibition
 
+For module buying leads and the planned GX12/printed-cover build, see the
+[Mona hardware guide](https://github.com/BGW-10/moto-g-stylus-2025-kernel/blob/mona-appliance/docs/mona/hardware.md).
+Its ideal-diode candidates still require testing at the actual battery voltage.
+
 Keep both `ENABLE_CHARGING_INHIBIT=0` and `CHARGING_HARDWARE_QUALIFIED=0` until
 the XL4015 circuit is electrically qualified. Follow the separate
 [USB-C power investigation](https://github.com/BGW-10/moto-g-stylus-2025-kernel/blob/mona-appliance/docs/mona/usb-power.md):

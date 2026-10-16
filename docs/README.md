@@ -5,6 +5,7 @@
 | Guide | Scope |
 | --- | --- |
 | [Mona deployment and recovery](mona-appliance.md) | Current scripts, persistent ADB, service migration, wake locks, power policy, rollback, validation. |
+| [Mona hardware and printed cover](https://github.com/BGW-10/moto-g-stylus-2025-kernel/blob/mona-appliance/docs/mona/hardware.md) | AliExpress ideal-diode leads, budget alternatives, GX12 wiring, cooling, and electrical qualification. |
 | [Debian architecture](debian-architecture-explained.md) | How Android, Magisk, Termux, and the chroot fit together. |
 | [OnePlus rooting and Debian setup](root-lineageos-debian-guide.md) | Historical OnePlus/LineageOS provisioning; use the current installer for boot scripts. |
 | [Android debloating](android-debloat.md) | Existing package-management notes. |

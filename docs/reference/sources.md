@@ -42,7 +42,32 @@ charging inhibition is now in `android/data/adb/service.d/`, disabled by default
 and printer application services are left for the operator to add. Three
 Android scripts share `android/data/adb/appliance/common.sh` for the boot wait.
 
-## Old page locations
+## Kernel fork documentation
+
+The maintained device guides live in this repository. The duplicated guides
+were removed from the kernel review branches, whose READMEs link here:
+
+| Repository | Review branch | Based on |
+| --- | --- | --- |
+| Appliance scripts and documentation | `mona-appliance` | `main` |
+| Moto kernel | `mona-appliance` | `mona-android16` |
+| OnePlus kernel | `appliance-docs` | `usb-serial-enable` |
+
+Kernel sources, configuration, and build tools stay in their kernel forks.
+The original guides remain available in the pinned source snapshots above.
+
+| Removed kernel page | Maintained guide |
+| --- | --- |
+| Mona `docs/mona/README.md` | [Mona index](../devices/mona/README.md) |
+| Mona `docs/mona/building.md` | [Kernel build](../devices/mona/kernel.md) |
+| Mona `docs/mona/fake-soc.md` | [Manual fake SOC](../devices/mona/fake-soc.md) |
+| Mona `docs/mona/appliance.md` | [Power](../devices/mona/power.md), [performance](../devices/mona/performance.md), [validation](../devices/mona/validation.md) |
+| Mona `docs/mona/usb-power.md` | [USB-C protection](../devices/mona/usb-power.md) |
+| Mona `docs/mona/hardware.md` | [Hardware and printed cover](../devices/mona/hardware.md) |
+| OnePlus `docs/BUILD_INSTALL.md` | [Kernel build and recovery](../devices/oneplus5/kernel.md) |
+| OnePlus `docs/MAINTAINER_SETUP.md` | [Kernel maintenance](../devices/oneplus5/kernel-maintenance.md) |
+
+## Old appliance page locations
 
 | Previous appliance page | Current guide |
 | --- | --- |

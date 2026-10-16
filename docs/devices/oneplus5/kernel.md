@@ -18,7 +18,7 @@ sudo apt install bc bison build-essential ca-certificates cpio curl file flex \
     git libelf-dev libncurses-dev libssl-dev make python3 rsync unzip wget zip
 mkdir -p ~/phone-appliance
 cd ~/phone-appliance
-git clone -b usb-serial-enable git@github.com:BGW-10/android_kernel_oneplus_msm8998.git
+git clone -b appliance-docs git@github.com:BGW-10/android_kernel_oneplus_msm8998.git
 cd android_kernel_oneplus_msm8998
 export WORKSPACE="$PWD/../oneplus5-build"
 mkdir -p "$WORKSPACE/toolchains" "$WORKSPACE/package" "$WORKSPACE/backups"
@@ -27,9 +27,11 @@ cat toolchains.conf
 ./scripts/setup-toolchains.sh
 ```
 
-Use your existing checkout if already cloned. The script supports `WORKSPACE`;
-without it, downloads default to `~/op5-kernel/toolchains`. Keep this Bash
-session and `WORKSPACE` for the remaining host steps.
+The `appliance-docs` review branch is based on `usb-serial-enable`; its changes
+centralize documentation. Use your existing checkout if already cloned.
+The script supports `WORKSPACE`; without it, downloads default to
+`~/op5-kernel/toolchains`. Keep this Bash session and `WORKSPACE` for the
+remaining host steps.
 
 ### Check the actual toolchain revisions
 

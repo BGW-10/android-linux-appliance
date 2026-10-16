@@ -33,3 +33,7 @@ assistance. See [sources and validation](reference/sources.md#ai-usage).
 Kernel instructions run in the corresponding **kernel checkout**. The scripts
 and service definitions live in this repository. Hardware proposals and old
 observations are labeled separately from steps already validated on a phone.
+
+Maintain installation, build, recovery, and appliance guides here. The kernel
+fork READMEs link to these device guides. See the
+[review branches and old page locations](reference/sources.md#kernel-fork-documentation).

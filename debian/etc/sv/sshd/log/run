@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+umask 027
+logdir=/var/log/appliance/sshd
+mkdir -p "$logdir"
+[ -f "$logdir/config" ] || cp ./config "$logdir/config"
+exec /usr/bin/svlogd -tt "$logdir"

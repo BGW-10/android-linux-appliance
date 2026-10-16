@@ -1,638 +1,148 @@
 # Android Appliance Userspace
 
-This repository contains the configuration and startup scripts used to turn a rooted android phone into a small always-on Linux appliance.
+Android boot scripts and a Debian overlay for a rooted phone running Klipper
+and related appliance services. The current targets are a Moto G Stylus 5G
+(2025), `mona`, on Android 16 and a OnePlus 5 on LineageOS.
 
-Currently, I am testing with two phones: A rooted OnePlus 5 running LineageOS, and a rooted Moto G Stylus (2025) running the stock software, but debloated.
+Start with the [Mona deployment guide](docs/mona-appliance.md). The
+[documentation index](docs/README.md) also links the existing rooting, chroot,
+kernel, and Android build guides. Printer configuration lives under
+[`klipper/ender3-v3-ke/`](klipper/ender3-v3-ke/).
 
-The phone continues to boot Android normally. Magisk runs the Android-side startup scripts, which mount the Debian chroot and launch a lightweight `runit` service supervisor inside Debian.
-
-The goal is to keep the appliance reproducible: rather than manually configuring files under Android and Debian, the repository mirrors the important parts of each filesystem so the desired state can be installed from Git.
-
-## Architecture
-
-```text
-Oneplus 5 / Moto G Stylus
-└── LineageOS / Android
-    ├── Android init (real PID 1)
-    ├── Magisk
-    │   └── /data/adb/service.d/
-    │       ├── appliance-tuning.sh
-    │       └── start-debian.sh
-    │
-    └── Debian chroot
-        └── /usr/local/bin/start-services
-            └── runsvdir /etc/service
-                └── runsv
-                    ├── sshd
-                    ├── future: Klipper
-                    ├── future: Moonraker
-                    └── future: nginx
-```
-
-Android remains responsible for the kernel, hardware, Wi-Fi, USB, display, charging, thermal management, and normal phone hardware support. Debian provides a conventional Linux userspace for long-running appliance services.
-
-`runit` is **not** used as PID 1. Only `runsvdir`, `runsv`, `sv`, and related tools are used as a lightweight service supervisor inside the chroot.
-
-## Current Repository Contents
-
-The repository currently contains:
-
-- `appliance-tuning.sh`
-  - runs from Magisk `service.d`;
-  - disables Android Doze/device idle;
-  - disables Battery Saver;
-  - disables USB autosuspend;
-  - disables Wi-Fi power saving and reapplies it when the Wi-Fi interface changes state;
-  - deliberately leaves SELinux, thermal protection, CPU scaling, charging safety, and other hardware safety mechanisms enabled.
-
-- `start-debian.sh`
-  - runs from Magisk `service.d`;
-  - waits for Android to finish booting;
-  - mounts the Debian chroot using `chroot-distro`;
-  - launches the Debian-side service entrypoint.
-
-- `start-services`
-  - runs inside Debian;
-  - replaces itself with `runsvdir /etc/service`;
-  - becomes the supervisor for Debian services.
-
-- `sshd/run`
-  - runit service definition for OpenSSH;
-  - prepares `/run/sshd`;
-  - starts `sshd` in the foreground so runit can supervise it.
-
-## Repository Layout
-
-The repository mirrors the target filesystems:
+## Startup and ownership
 
 ```text
-.
-├── README.md
-├── android/
-│   └── data/
-│       └── adb/
-│           └── service.d/
-│               ├── appliance-tuning.sh
-│               └── start-debian.sh
-│
-└── debian/
-    ├── etc/
-    │   └── sv/
-    │       └── sshd/
-    │           └── run
-    │
-    └── usr/
-        └── local/
-            └── bin/
-                └── start-services
+Android init + Magisk late_start
+├── enable-tcp-adb.sh      authenticated TCP 5555, bounded readiness check
+├── appliance-tuning.sh    Doze/Battery Saver, selected USB devices, Wi-Fi
+├── charging-inhibit.sh   optional Motorola vote; disabled by default
+└── start-debian.sh        bounded mount attempts, one launch
+    └── Debian start-services
+        ├── owns klipper-appliance kernel wake lock
+        └── runsvdir /etc/service
+            └── runsv → foreground service + optional svlogd
 ```
 
-The intended installation paths are therefore obvious:
+Android owns hardware, thermal management, charging safety, SELinux, CPU
+scaling, and networking. Runit supervises Debian services without replacing
+Android's PID 1. The scripts preserve the stock CPU governor and thermal
+policy. Fake SOC is a separate manual kernel operation.
 
-```text
-android/data/adb/service.d/appliance-tuning.sh
-    -> /data/adb/service.d/appliance-tuning.sh
+## Files and defaults
 
-android/data/adb/service.d/start-debian.sh
-    -> /data/adb/service.d/start-debian.sh
+The `android/` and `debian/` trees mirror their installation paths.
 
-debian/usr/local/bin/start-services
-    -> /usr/local/bin/start-services
+| Path under its tree | Purpose |
+| --- | --- |
+| `android/data/adb/appliance/config.sh` | Root-owned settings; preserved by the installer on upgrades. |
+| `android/data/adb/appliance/common.sh` | Boot readiness, process locks, bounded logging. |
+| `android/data/adb/service.d/enable-tcp-adb.sh` | Enables authenticated ADB on TCP 5555 at each boot. |
+| `android/data/adb/service.d/appliance-tuning.sh` | Saves original settings, applies tuning, handles USB/Wi-Fi changes. |
+| `android/data/adb/service.d/start-debian.sh` | Mounts `debian-trixie`, then invokes its supervisor. |
+| `android/data/adb/service.d/charging-inhibit.sh` | Opt-in Mona charging inhibition after hardware qualification. |
+| `debian/etc/default/appliance-services` | Service directory, wake-lock name, shutdown timeout. |
+| `debian/usr/local/bin/start-services` | `start`, `status`, and `stop`, with duplicate-start protection. |
+| `debian/etc/sv/sshd/` | Foreground SSH daemon and rotated logging. |
 
-debian/etc/sv/sshd/run
-    -> /etc/sv/sshd/run
-```
+ADB, Debian startup, and tuning are enabled in the supplied configuration.
+Charging inhibition is disabled. Existing USB serial/CP210x support comes
+from the kernel; these scripts do not install or modify kernel modules.
 
-This layout should be retained as more configuration is added.
+The Android profile disables Doze and Battery Saver, and sets USB
+`power/control=on` only for configured VID:PID pairs. It does not globally
+change USB autosuspend. It checks those devices and Wi-Fi power saving every
+30 seconds. Original values are saved for rollback; a setting already disabled
+before installation is restored to that disabled state.
 
-## Prerequisites
+## Installation
 
-### Android side
+Prerequisites: Magisk, a working `chroot-distro` installation, a Debian chroot,
+and an authorized ADB host. In Debian, install `runit`, `openssh-server`, and
+`util-linux` (provides `flock`). Keep SSH keys and private configuration out of
+this repository.
 
-The phone should have:
-
-- unlocked bootloader;
-- Magisk/root access;
-- `chroot-distro` installed and working;
-- a Debian chroot already created;
-- working Wi-Fi;
-- working USB OTG.
-
-The distro name used by `start-debian.sh` must match the name registered with `chroot-distro`.
-
-Check the installed command and syntax from an Android root shell:
+Copy an extracted checkout to the phone, for example under
+`/data/local/tmp/klipper-android-appliance-scripts`. In an **Android root shell**:
 
 ```sh
-su
-command -v chroot-distro
-chroot-distro --help
+# Only persistent ADB startup:
+sh /data/local/tmp/klipper-android-appliance-scripts/tools/install-android.sh --adb-only
+
+# Or all Android startup files, after reviewing the deployment guide:
+sh /data/local/tmp/klipper-android-appliance-scripts/tools/install-android.sh --all
 ```
 
-Update `start-debian.sh` if the path or command syntax differs on the installed version.
+Both modes back up replaced files under `/data/adb/appliance/backups/`, retain
+an existing `config.sh`, and leave service startup to the operator or next boot.
+Use the repository's [Debian installer](tools/install-debian.sh) **inside the
+chroot**, with the checkout accessible there:
 
-### Debian side
+```sh
+sh /path/to/checkout/tools/install-debian.sh
+```
+
+Choose exactly one SSH service definition. Debian's package may already enable
+`/etc/service/ssh`; this repository supplies `sshd`. The installer does not
+change those links. See [migration](docs/mona-appliance.md#debian-migration).
+Do not restart a printer host during a print.
+
+The service.d layout follows [Magisk's late_start boot-script support](https://topjohnwu.github.io/Magisk/guides.html#boot-scripts).
+Invoke Android scripts manually through the same shell Magisk uses:
+
+```sh
+ASH_STANDALONE=1 /data/adb/magisk/busybox sh /data/adb/service.d/enable-tcp-adb.sh
+```
+
+## Operation
+
+From an authorized workstation:
+
+```sh
+adb connect PHONE_IP:5555
+adb shell
+su
+```
+
+The script keeps ADB key authentication enabled and leaves `adbd` privilege
+dropping intact; use `su` for root. TCP 5555 should be reachable only on a
+trusted management network. It is the legacy TCP transport, not Android's
+paired TLS wireless-debugging mode. Reserve the phone's DHCP address.
 
 Inside Debian:
 
-```bash
-apt update
-apt install -y runit openssh-server
+```sh
+/usr/local/bin/start-services status
+sv status /etc/service/*
+# When the printer is idle and heaters are off:
+/usr/local/bin/start-services stop
+# Start again in the foreground, or use Android's start-debian.sh launcher:
+/usr/local/bin/start-services start
 ```
 
-The Debian environment should already have any Android-specific networking groups and PAM adjustments required by the chroot setup.
+Individual services remain managed by `sv up`, `sv down`, and `sv restart`.
+Service `run` scripts must `exec` a foreground program. Use `chpst -u klipper`
+for a dedicated unprivileged Klipper account when adding its service; retain
+printer MCU shutdown/watchdog behavior. No new printer service or motion/heater
+configuration is installed by this change.
 
-## Installing the Android-Side Scripts
+Android logs live at `/data/adb/appliance/log/`: each script retains its current
+log (about 64 KiB) plus one rotated file. SSH logs live at
+`/var/log/appliance/sshd/`, with roughly 1 MiB per file and five rotated files.
+Review backups and free space periodically; deployment backups are not deleted
+automatically.
 
-Install the Magisk scripts into `/data/adb/service.d/`:
+## Validation
 
 ```sh
-su
-
-cp /path/to/repo/android/data/adb/service.d/appliance-tuning.sh \
-   /data/adb/service.d/appliance-tuning.sh
-
-cp /path/to/repo/android/data/adb/service.d/start-debian.sh \
-   /data/adb/service.d/start-debian.sh
-
-chmod 755 /data/adb/service.d/appliance-tuning.sh
-chmod 755 /data/adb/service.d/start-debian.sh
+python3 -m unittest discover -s tests -v
 ```
 
-Magisk executes executable scripts under `/data/adb/service.d` during boot.
-
-### `appliance-tuning.sh`
-
-This script should perform only appliance-level Android tuning.
-
-It should **not** disable:
-
-- SELinux;
-- thermal throttling;
-- CPU frequency scaling;
-- CPU idle states;
-- battery temperature monitoring;
-- charging safety;
-- filesystem synchronization;
-- kernel watchdogs.
-
-### `start-debian.sh`
-
-The Android-side startup script should only:
-
-1. wait until Android has finished booting;
-2. mount the Debian chroot;
-3. execute `/usr/local/bin/start-services` inside Debian.
-
-It should not know about individual services such as SSH, Klipper, Moonraker, or nginx. Those are managed entirely by runit inside Debian.
-
-## Installing the Debian-Side Files
-
-At minimum:
-
-```bash
-sudo mkdir -p /etc/sv/sshd
-sudo mkdir -p /etc/service
-sudo mkdir -p /usr/local/bin
-```
-
-Install the service entrypoint:
-
-```bash
-sudo cp /path/to/repo/debian/usr/local/bin/start-services \
-    /usr/local/bin/start-services
-sudo chmod 755 /usr/local/bin/start-services
-```
-
-Install the SSH service:
-
-```bash
-sudo cp /path/to/repo/debian/etc/sv/sshd/run \
-    /etc/sv/sshd/run
-sudo chmod 755 /etc/sv/sshd/run
-```
-
-Enable SSH under runit:
-
-```bash
-sudo ln -sfn /etc/sv/sshd /etc/service/sshd
-```
-
-## Debian Service Entrypoint
-
-`/usr/local/bin/start-services` should remain intentionally small:
-
-```sh
-#!/bin/sh
-set -eu
-
-exec /usr/bin/runsvdir /etc/service
-```
-
-`exec` replaces the shell with `runsvdir`, leaving a simple process tree and avoiding an unnecessary wrapper process.
-
-`runsvdir` watches `/etc/service`. Each enabled directory there gets its own `runsv` supervisor.
-
-## SSH Service Definition
-
-The runit entrypoint for SSH is:
-
-```text
-/etc/sv/sshd/run
-```
-
-A suitable definition is:
-
-```sh
-#!/bin/sh
-
-mkdir -p /run/sshd
-chown root:root /run/sshd
-chmod 0755 /run/sshd
-
-exec /usr/sbin/sshd -D -e
-```
-
-`sshd` must remain in the foreground (`-D`) so runit can supervise the real process.
-
-## Enabling and Disabling Services
-
-Service definitions live permanently under:
-
-```text
-/etc/sv/
-```
-
-Enabled services are linked into:
-
-```text
-/etc/service/
-```
-
-Enable a service:
-
-```bash
-sudo ln -sfn /etc/sv/sshd /etc/service/sshd
-```
-
-Disable it:
-
-```bash
-sudo rm /etc/service/sshd
-```
-
-The service definition remains available under `/etc/sv`.
-
-## Managing Services
-
-Once `runsvdir` is running:
-
-```bash
-sudo sv status /etc/service/sshd
-sudo sv start /etc/service/sshd
-sudo sv stop /etc/service/sshd
-sudo sv restart /etc/service/sshd
-```
-
-Typical running status:
-
-```text
-run: /etc/service/sshd: (pid 1234) 30s
-```
-
-## Testing Before Boot Automation
-
-Before relying on Magisk startup, test the Debian supervisor manually.
-
-Inside Debian:
-
-```bash
-sudo /usr/local/bin/start-services
-```
-
-Leave that shell running. In another Debian shell:
-
-```bash
-sudo sv status /etc/service/sshd
-sudo sv restart /etc/service/sshd
-```
-
-Only after this works should `start-debian.sh` be used to launch the supervisor automatically at Android boot.
-
-## Boot Flow
-
-```text
-Android boots
-    |
-    v
-Magisk service.d starts
-    |
-    +--> appliance-tuning.sh
-    |
-    +--> start-debian.sh
-            |
-            v
-       mount Debian
-            |
-            v
-       /usr/local/bin/start-services
-            |
-            v
-       runsvdir /etc/service
-            |
-            v
-       /etc/service/sshd
-            |
-            v
-       /etc/sv/sshd/run
-            |
-            v
-       sshd -D -e
-```
-
-## Verifying Boot
-
-After rebooting the phone, inspect the appliance tuning log:
-
-```sh
-su
-cat /data/local/tmp/appliance-tuning.log
-```
-
-Inspect the Debian startup log if `start-debian.sh` writes one:
-
-```sh
-cat /data/local/tmp/start-debian.log
-```
-
-Then connect to Debian and check:
-
-```bash
-sudo sv status /etc/service/sshd
-ps aux | grep '[r]unsvdir'
-ps aux | grep '[r]unsv'
-```
-
-## Adding a New Service
-
-For each new Debian service:
-
-1. create `debian/etc/sv/<service>/`;
-2. add an executable file named exactly `run`;
-3. install it to `/etc/sv/<service>/run`;
-4. symlink `/etc/sv/<service>` into `/etc/service/` to enable it.
-
-Example:
-
-```text
-debian/etc/sv/moonraker/run
-```
-
-becomes:
-
-```text
-/etc/sv/moonraker/run
-```
-
-and is enabled with:
-
-```bash
-sudo ln -sfn /etc/sv/moonraker /etc/service/moonraker
-```
-
-The file must be called `run`, not `run.sh`; `runsv` specifically executes `./run`.
-
-## Foreground Processes
-
-Programs supervised by runit must remain in the foreground.
-
-```text
-sshd      -> sshd -D
-nginx     -> nginx -g 'daemon off;'
-Klipper   -> foreground Python process
-Moonraker -> foreground Python process
-```
-
-Do not daemonize a service behind runit's back.
-
-## Running Services as a Non-Root User
-
-Services that do not require root should run as the dedicated appliance user.
-
-With runit, `chpst` can switch users:
-
-```sh
-exec chpst -u klipper /path/to/program
-```
-
-This pattern should be used for future Klipper and Moonraker services rather than running them as root.
-
-## Logging
-
-For now, services may use their native log files or stderr/stdout.
-
-Runit also supports supervised logging with `svlogd`:
-
-```text
-/etc/sv/example/
-├── run
-└── log/
-    └── run
-```
-
-This can be added later if centralized runit-managed logs become useful.
-
-## Planned Services
-
-The intended appliance stack will likely grow to include:
-
-```text
-/etc/sv/
-├── sshd/
-├── klipper/
-├── moonraker/
-└── nginx/
-```
-
-Mainsail itself is static web content and does not need its own service; nginx will serve it.
-
-## Design Principles
-
-### Reproducible
-
-Important appliance configuration should live in Git rather than exist only as manual changes on the phone.
-
-### Mirrored
-
-Files should generally be stored under the same path hierarchy used on the target system.
-
-For example:
-
-```text
-debian/etc/sv/sshd/run
-```
-
-maps directly to:
-
-```text
-/etc/sv/sshd/run
-```
-
-### Idempotent
-
-Future provisioning scripts should be safe to run repeatedly and converge on the same system state.
-
-### Minimal
-
-Android startup should only bring up the Debian environment. Debian's `runsvdir` should manage Debian services. Individual service definitions should contain only the setup required to launch that service.
-
-### Safe
-
-Appliance tuning should remove power-management behavior that interferes with an always-on host without disabling hardware safety mechanisms.
-
-## Troubleshooting
-
-### `runsvdir` is not running
-
-```bash
-command -v runsvdir
-```
-
-If missing:
-
-```bash
-sudo apt install runit
-```
-
-Then test:
-
-```bash
-sudo /usr/local/bin/start-services
-```
-
-### Service does not start
-
-```bash
-sudo sv status /etc/service/sshd
-ls -l /etc/service/
-ls -l /etc/sv/sshd/run
-```
-
-The `run` file must be executable.
-
-### SSH repeatedly exits
-
-Test the SSH configuration:
-
-```bash
-sudo /usr/sbin/sshd -t
-```
-
-Check `/run/sshd`:
-
-```bash
-ls -ld /run/sshd
-```
-
-Expected ownership and mode:
-
-```text
-drwxr-xr-x root root
-```
-
-### Debian mounts but services do not start
-
-Run manually inside Debian:
-
-```bash
-/usr/local/bin/start-services
-```
-
-If that works, inspect the Android-side `start-debian.sh` and its log.
-
-### Wi-Fi becomes sluggish after idle
-
-```sh
-su
-iw dev wlan0 get power_save
-```
-
-Expected:
-
-```text
-Power save: off
-```
-
-Then inspect:
-
-```sh
-cat /data/local/tmp/appliance-tuning.log
-```
-
-### USB devices disappear or become unresponsive
-
-```sh
-su
-cat /sys/module/usbcore/parameters/autosuspend
-```
-
-If supported by the kernel, appliance tuning should set it to:
-
-```text
--1
-```
-
-## Future Provisioning
-
-As the repository grows, add installers that copy the mirrored trees into place and ensure ownership and permissions are correct.
-
-A future layout might include:
-
-```text
-.
-├── install-android.sh
-├── install-debian.sh
-├── android/
-│   └── data/adb/service.d/
-└── debian/
-    ├── etc/
-    │   ├── sv/
-    │   └── nginx/
-    ├── usr/local/bin/
-    └── home/klipper/
-```
-
-The long-term goal is approximately:
-
-```text
-install LineageOS
--> install Magisk
--> install/create Debian chroot
--> clone this repository
--> run provisioning
--> reboot
-```
-
-Everything above that base should be represented here rather than relying on undocumented manual state.
-
-## Current Status
-
-Working so far:
-
-- rooted LineageOS appliance;
-- Debian chroot;
-- Magisk boot scripts;
-- appliance power tuning;
-- Debian startup at boot;
-- runit service supervision design;
-- SSH service definition;
-- custom OnePlus 5 kernel with USB serial support;
-- USB-UART loopback successfully tested.
-
-Likely next additions:
-
-- automated repository installer;
-- Klipper service definition;
-- Moonraker service definition;
-- nginx + Mainsail configuration;
-- USB device permission handling;
-- printer UART configuration.
+The tests mock Android properties and sysfs in temporary directories. Debian
+integration tests run real `runsvdir`, `runsv`, and `sv` when available in `PATH`;
+otherwise they report a skip. They cover ADB failures/idempotence, mount failure,
+settings restoration, charging guards, log rotation, wake-lock ownership,
+duplicate starts, supervisor death, and failed shutdown.
+
+See [Mona validation and rollback](docs/mona-appliance.md) for the remaining
+phone reboot, screen-off, USB, and electrical checks. Passing host tests does
+not establish safe unattended batteryless operation.

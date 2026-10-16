@@ -1,5 +1,9 @@
 # How the OnePlus 5 Debian Setup Works
 
+For the current boot scripts, supervised wake-lock lifecycle, installation, and
+rollback, use the [Mona deployment guide](mona-appliance.md) and
+[repository README](../README.md). Startup examples below describe the earlier setup.
+
 ## Overview
 
 The OnePlus 5 is still running Android, but we added a real Debian userspace alongside it. Debian is not running in a virtual machine and is not being CPU-emulated. It uses the phone's actual Linux kernel directly.

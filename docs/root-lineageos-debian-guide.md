@@ -1,5 +1,9 @@
 # OnePlus 5 Klipper Host Setup Guide
 
+For the current boot scripts, supervised wake-lock lifecycle, installation, and
+rollback, use the [Mona deployment guide](mona-appliance.md) and
+[repository README](../README.md). Startup examples below describe the earlier setup.
+
 This guide documents the working path used to turn a OnePlus 5 into a rooted Android device capable of automatically mounting a Debian chroot and starting SSH at boot.
 
 ## 1. Prepare the OnePlus 5

@@ -1,0 +1,8 @@
+# Root-owned configuration for /usr/local/bin/start-services.
+SERVICE_DIR=/etc/service
+STATE_DIR=/run/appliance-services
+WAKE_LOCK=/sys/power/wake_lock
+WAKE_UNLOCK=/sys/power/wake_unlock
+WAKE_NAME=klipper-appliance
+REQUIRE_WAKE_LOCK=1
+STOP_TIMEOUT=20

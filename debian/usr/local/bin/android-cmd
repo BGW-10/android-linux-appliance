@@ -1,0 +1,4 @@
+#!/bin/sh
+# Prefix only the command name; keep the remaining arguments separate.
+# shellcheck disable=SC2145
+exec chroot /proc/1/root /system/bin/"$@"

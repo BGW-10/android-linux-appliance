@@ -20,6 +20,7 @@ mkdir -p /etc/sv /etc/service /usr/local/bin
 
 # Back up any existing files at these destinations before replacing them.
 install -m 755 "$repo/debian/usr/local/bin/start-services" /usr/local/bin/start-services
+install -m 755 "$repo/debian/usr/local/bin/android-cmd" /usr/local/bin/android-cmd
 cp -a "$repo/debian/etc/sv/sshd" /etc/sv/
 chmod 755 /etc/sv/sshd/run /etc/sv/sshd/log/run
 ```
@@ -38,6 +39,13 @@ ln -s /etc/sv/sshd /etc/service/sshd
 
 Keep existing SSH keys and authentication settings. The launcher starts all
 linked services; see [runit](../services/runit.md) to add your own daemons.
+
+### Android commands from Debian
+
+As Debian root, use `android-cmd getprop ro.product.device` to run Android's
+`/system/bin/getprop`. The helper forwards the command and its arguments through
+`chroot /proc/1/root`, using Android's filesystem. It assumes `/proc/1` is
+Android's init process, as in this chroot setup.
 
 ## 2. Install the Android boot scripts
 
@@ -178,7 +186,7 @@ interface or saved-settings database in the simplified scripts.
 The earlier simplified scripts at `103bb35` passed ShellCheck, shell syntax
 checks, and a temporary runit start/restart/stop/logging exercise. The current
 revision adds the shared boot helper and root environment and moves charging
-inhibition into the normal Android layout. All eight current shell files passed
+inhibition into the normal Android layout. The shell files passed
 ShellCheck and syntax checks with BusyBox ash and host sh. Temporary host checks
 covered an already-completed boot, delayed boot, the timeout, and the disabled
 charging script. They used stubs for Android properties and sleep.

@@ -61,5 +61,6 @@ it is not a second installation path in the current docs.
 
 [Mona's validation page](../devices/mona/validation.md) records its specific
 state. The OnePlus guides do not establish a newly tested firmware/kernel pair.
-Product prices and availability in the hardware guide are dated observations or unverified leads,
-not a current stock guarantee.
+The hardware guide ranks module families using manufacturer specifications.
+Search terms are buying aids; they do not verify a seller's board, availability,
+or suitability. Electrical qualification on Mona remains pending.

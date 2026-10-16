@@ -19,7 +19,7 @@ a new-stock-device unlock/root procedure or compatibility with another firmware.
 | [Manual fake SOC](fake-soc.md) | Debug-option tradeoffs, required charger-module rebuild, manual enable/restore. |
 | [Battery-replacement supply](power.md) | XL4015 input/output requirements, original PCB, transients, and recovery. |
 | [USB-C power protection](usb-power.md) | Hardware blocker, USB roles, optional one-shot charging policy, and reset limits. |
-| [Hardware and printed cover](hardware.md) | AliExpress leads, documented alternatives, GX12 wiring, and enclosure design. |
+| [Hardware and printed cover](hardware.md) | Ranked module search terms, required specifications, GX12 wiring, and enclosure design. |
 | [Performance](performance.md) | Observed frequency cap, stock governor comparison, cooling, and worker placement. |
 | [Validation record](validation.md) | Dated observations, completed checks, and deployment work still pending. |
 

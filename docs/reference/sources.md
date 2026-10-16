@@ -20,7 +20,7 @@ device or electrical tests are recorded in the guides; see
 
 | Source snapshot | Material used |
 | --- | --- |
-| [Appliance scripts `103bb35`](https://github.com/BGW-10/klipper-android-appliance-scripts/tree/103bb35b74c1df99d8492381f66c7c9046c71174) | Debian/root/SSH setup, architecture, iw build, debloating, simplified boot scripts, and runit examples. |
+| [Appliance scripts `103bb35`](https://github.com/BGW-10/android-linux-appliance/tree/103bb35b74c1df99d8492381f66c7c9046c71174) | Debian/root/SSH setup, architecture, iw build, debloating, simplified boot scripts, and runit examples. |
 | [Mona kernel `533a0b4f7464`](https://github.com/BGW-10/moto-g-stylus-2025-kernel/tree/533a0b4f7464bcf06a07b5097922fcb6748b9ded/docs/mona) | Image/config recipe, fake SOC, dated phone observations, performance, XL4015/USB protection, and hardware buying/cover guide. |
 | [OnePlus kernel `e1d4edd7`](https://github.com/BGW-10/android_kernel_oneplus_msm8998/tree/e1d4edd7e05dabd32a9b8458d3b3c570cd992ba9) | `docs/BUILD_INSTALL.md`, `docs/MAINTAINER_SETUP.md`, actual `scripts/build.sh`, `scripts/setup-toolchains.sh`, `toolchains.conf`, and device defconfig. |
 

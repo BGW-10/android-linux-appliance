@@ -14,8 +14,8 @@ inside the chroot:
 
 ```sh
 apt install git runit util-linux openssh-server
-git clone -b mona-appliance https://github.com/BGW-10/klipper-android-appliance-scripts.git /root/klipper-android-appliance-scripts
-repo=/root/klipper-android-appliance-scripts
+git clone -b mona-appliance https://github.com/BGW-10/android-linux-appliance.git /root/android-linux-appliance
+repo=/root/android-linux-appliance
 mkdir -p /etc/sv /etc/service /usr/local/bin
 
 # Back up any existing files at these destinations before replacing them.
@@ -23,6 +23,13 @@ install -m 755 "$repo/debian/usr/local/bin/start-services" /usr/local/bin/start-
 install -m 755 "$repo/debian/usr/local/bin/android-cmd" /usr/local/bin/android-cmd
 cp -a "$repo/debian/etc/sv/sshd" /etc/sv/
 chmod 755 /etc/sv/sshd/run /etc/sv/sshd/log/run
+```
+
+An existing checkout can keep its directory name. After the repository rename,
+run this from that checkout and use its actual path for `repo` above:
+
+```sh
+git remote set-url origin https://github.com/BGW-10/android-linux-appliance.git
 ```
 
 Use the `runit` package for its tools; Android remains PID 1. Inspect
@@ -59,13 +66,13 @@ Record your Battery Saver threshold before changing it:
 From the **host**, push the checkout (adjust its local path):
 
 ```sh
-adb push /path/to/klipper-android-appliance-scripts /data/local/tmp/
+adb push /path/to/android-linux-appliance /data/local/tmp/
 ```
 
 Then run in an **Android root shell**:
 
 ```sh
-repo=/data/local/tmp/klipper-android-appliance-scripts
+repo=/data/local/tmp/android-linux-appliance
 backup=/data/local/tmp/appliance-backup-$(date +%Y%m%d-%H%M%S)
 mkdir -p /data/adb/service.d /data/adb/appliance "$backup"
 cp -a /data/adb/service.d "$backup/"

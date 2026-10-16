@@ -132,7 +132,7 @@ The commands assume the checkout was pushed as in the boot-script guide.
 
 ```sh
 set -e
-repo=/data/local/tmp/klipper-android-appliance-scripts
+repo=/data/local/tmp/android-linux-appliance
 module=/data/adb/modules/extra_system_binaries
 mkdir -p "$module/system/bin"
 if [ ! -f "$module/module.prop" ]; then

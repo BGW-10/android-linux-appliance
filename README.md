@@ -1,8 +1,9 @@
-# Android appliance scripts and documentation
+# Android Linux Appliance
 
-A small Android/Debian setup for using rooted phones as Klipper hosts. Runtime
-scripts stay short and readable; this repository also collects the device,
-kernel, installation, and operation guides in one place.
+A small Android/Debian setup for turning rooted phones into Linux appliances,
+including Klipper hosts. Runtime scripts stay short and readable; this
+repository also collects device, kernel, installation, and operation guides
+in one place.
 
 Android boot scripts and Debian services run as **root**, with `/root` as the
 Debian home directory.

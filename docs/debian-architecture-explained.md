@@ -1,6 +1,6 @@
 # How the OnePlus 5 Debian Setup Works
 
-For the current boot scripts, supervised wake-lock lifecycle, installation, and
+For the current boot scripts, installation, service management, and
 rollback, use the [Mona deployment guide](mona-appliance.md) and
 [repository README](../README.md). Startup examples below describe the earlier setup.
 

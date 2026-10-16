@@ -1,0 +1,13 @@
+#!/bin/sh
+# Example paths/user: edit to match your installed Klipper and virtualenv.
+set -eu
+exec 2>&1
+export HOME=/home/klipper USER=klipper
+cd "$HOME/klipper"
+# chpst requires an explicit list of supplementary groups; see docs/runit.md.
+exec /usr/bin/chpst -u klipper:klipper:dialout:aid_inet \
+    "$HOME/klippy-env/bin/python" "$HOME/klipper/klippy/klippy.py" \
+    "$HOME/printer_data/config/printer.cfg" \
+    -I "$HOME/printer_data/comms/klippy.serial" \
+    -a "$HOME/printer_data/comms/klippy.sock" \
+    -l "$HOME/printer_data/logs/klippy.log"

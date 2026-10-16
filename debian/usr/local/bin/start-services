@@ -1,125 +1,15 @@
 #!/bin/sh
-# runit is a service supervisor here, not Android's init.
-set -u
-umask 077
-SERVICE_DIR=${SERVICE_DIR:-/etc/service}
-STATE_DIR=${STATE_DIR:-/run/appliance-services}
-WAKE_LOCK=${WAKE_LOCK:-/sys/power/wake_lock}
-WAKE_UNLOCK=${WAKE_UNLOCK:-/sys/power/wake_unlock}
-WAKE_NAME=${WAKE_NAME:-klipper-appliance}
-REQUIRE_WAKE_LOCK=${REQUIRE_WAKE_LOCK:-1}
-STOP_TIMEOUT=${STOP_TIMEOUT:-20}
-CONFIG=${APPLIANCE_SERVICES_CONFIG:-/etc/default/appliance-services}
-# shellcheck source=/dev/null
-[ ! -f "$CONFIG" ] || . "$CONFIG"
-case "$STOP_TIMEOUT" in ''|*[!0-9]*) exit 2 ;; esac
-[ "$STOP_TIMEOUT" -ge 1 ] && [ "$STOP_TIMEOUT" -le 120 ] || exit 2
-case "$WAKE_NAME" in ''|*[!a-zA-Z0-9_-]*) exit 2 ;; esac
-mkdir -p "$STATE_DIR" || exit 1
-say() { printf '%s %s\n' "$(date -Iseconds)" "$*"; }
-start_time() { awk '{print $22}' "/proc/$1/stat" 2>/dev/null; }
-owner_alive() {
-    [ -r "$STATE_DIR/owner" ] || return 1
-    read -r owner_pid owner_start < "$STATE_DIR/owner"
-    case "$owner_pid" in ''|*[!0-9]*) return 1 ;; esac
-    [ -n "$owner_start" ] && [ "$(start_time "$owner_pid")" = "$owner_start" ]
-}
-case "${1:-start}" in
-    status)
-        if owner_alive; then
-            say "Supervisor PID $owner_pid"
-            sv status "$SERVICE_DIR"/*
-        else say 'No tracked supervisor; inspect runsv processes and wake locks'; exit 1; fi
-        exit "$?"
-        ;;
-    stop)
-        owner_alive || { say 'No tracked supervisor; see orphan recovery instructions'; exit 1; }
-        kill -TERM "$owner_pid" || exit 1
-        remaining=$((STOP_TIMEOUT * 2 + 10))
-        while owner_alive && [ "$remaining" -gt 0 ]; do
-            sleep 1
-            remaining=$((remaining - 1))
-        done
-        if owner_alive; then say 'ERROR: supervisor did not stop'; exit 1; fi
-        [ "$(cat "$STATE_DIR/stop-result" 2>/dev/null)" = 0 ] || exit 1
-        say 'Services stopped and owned wake lock released'
-        exit 0
-        ;;
-    start) ;;
-    *) echo 'Usage: start-services [start|stop|status]' >&2; exit 2 ;;
-esac
-exec 9>"$STATE_DIR/lock"
-flock -n 9 || { say 'Supervisor already running'; exit 0; }
-for tool in runsvdir runsv sv; do
-    command -v "$tool" >/dev/null || { say "Missing $tool"; exit 1; }
-done
-[ -d "$SERVICE_DIR" ] || { say "Missing $SERVICE_DIR"; exit 1; }
-# Refuse migration over an existing legacy supervisor or orphaned runsv.
-for service in "$SERVICE_DIR"/*; do
-    [ -d "$service" ] || continue
-    if sv status "$service" >/dev/null 2>&1; then
-        say "ERROR: $service already supervised; stop the previous supervisor first"
-        exit 1
-    fi
-done
-held=0
-dir_pid=
-# Called through the EXIT trap.
-# shellcheck disable=SC2329
-cleanup() {
-    original_rc=$?
-    trap '' TERM INT HUP
-    stop_ok=1
-    set --
-    for service in "$SERVICE_DIR"/*; do
-        [ -d "$service" ] || continue
-        if sv status "$service" >/dev/null 2>&1; then set -- "$@" "$service"; fi
-    done
-    if [ "$#" -gt 0 ]; then
-        sv -w "$STOP_TIMEOUT" down "$@" || stop_ok=0
-    fi
-    if [ -n "$dir_pid" ] && [ -n "$dir_start" ] && [ "$(start_time "$dir_pid")" = "$dir_start" ]; then
-        # TERM alone leaves runsv children behind; HUP tells them to exit.
-        kill -HUP "$dir_pid" 2>/dev/null || :
-        wait "$dir_pid" 2>/dev/null || :
-    elif [ "$#" -gt 0 ]; then
-        sv -w "$STOP_TIMEOUT" exit "$@" || stop_ok=0
-    fi
-    if [ "$held" = 1 ] && [ "$stop_ok" = 1 ]; then
-        printf '%s\n' "$WAKE_NAME" > "$WAKE_UNLOCK" || stop_ok=0
-    fi
-    if [ "$stop_ok" = 1 ]; then
-        say 'Supervisor cleanup complete'
-        printf '0\n' > "$STATE_DIR/stop-result"
-    else
-        say 'ERROR: incomplete cleanup; wake lock retained if held; inspect services before recovery'
-        printf '1\n' > "$STATE_DIR/stop-result"
-    fi
-    rm -f "$STATE_DIR/owner"
-    trap - 0
-    [ "$stop_ok" = 1 ] || exit 1
-    exit "$original_rc"
-}
-trap cleanup 0
-trap 'exit 0' TERM INT HUP
-if [ -w "$WAKE_LOCK" ] && [ -w "$WAKE_UNLOCK" ] &&
-   printf '%s\n' "$WAKE_NAME" > "$WAKE_LOCK"; then
-    held=1
-    say "Acquired wake lock $WAKE_NAME"
-elif [ "$REQUIRE_WAKE_LOCK" = 1 ]; then
-    say 'ERROR: required wake lock unavailable; refusing unattended service startup'
-    exit 1
-else
-    say 'WARNING: starting without a kernel wake lock; provide another suspend blocker'
-fi
-rm -f "$STATE_DIR/stop-result"
-printf '%s %s\n' "$$" "$(start_time "$$")" > "$STATE_DIR/owner"
-runsvdir -P "$SERVICE_DIR" 9>&- &
-dir_pid=$!
-dir_start=$(start_time "$dir_pid")
-printf '%s %s\n' "$dir_pid" "$dir_start" > "$STATE_DIR/runsvdir"
-say "Started runsvdir PID $dir_pid"
-wait "$dir_pid"
-rc=$?
-say "runsvdir exited ($rc); stopping remaining services"
-exit "$rc"
+# Run as root inside Debian. Add services under /etc/sv, enable in /etc/service.
+set -eu
+[ "$#" -eq 0 ] || { echo 'Use sv to stop, restart, or inspect services.' >&2; exit 2; }
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+mkdir -p /etc/service /run
+
+# Keep the appliance awake until reboot or an explicit manual release.
+# Deliberately keep this lock if runit exits while service processes remain.
+printf 'klipper-appliance\n' > /sys/power/wake_lock
+
+# util-linux flock prevents duplicate launches. --close keeps the lock file
+# descriptor out of services, so they cannot accidentally retain it.
+exec /usr/bin/flock --nonblock --close /run/appliance-runsvdir.lock \
+    /usr/bin/runsvdir -P /etc/service

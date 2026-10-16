@@ -1,0 +1,11 @@
+#!/bin/sh
+# Example paths/user: edit to match your installed Moonraker and virtualenv.
+set -eu
+exec 2>&1
+export HOME=/home/klipper USER=klipper
+cd "$HOME/moonraker"
+exec /usr/bin/chpst -u klipper:klipper:aid_inet \
+    "$HOME/moonraker-env/bin/python" -m moonraker \
+    -d "$HOME/printer_data" \
+    -c "$HOME/printer_data/config/moonraker.conf" \
+    -l "$HOME/printer_data/logs/moonraker.log"

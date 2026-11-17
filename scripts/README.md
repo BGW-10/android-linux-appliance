@@ -1,19 +1,12 @@
-# Host Deployment Scripts
+# Host Deployment Script
 
-These scripts mirror the repository's `android/` and `debian/` trees onto a
-rooted Android device over ADB (USB or TCP) and apply the expected ownership and
-file permissions.
-
-## Files
-
-| Script | Role |
-| --- | --- |
-| `deploy.sh` | Host wrapper for Linux, macOS, and WSL2 (auto-falls back to Windows `adb.exe` when WSL has no USB device). |
-| `deploy.ps1` | Host wrapper for Windows PowerShell 5.1+ and PowerShell 7+. |
-| `install-on-device.sh` | On-device POSIX `sh` installer pushed to `/data/local/tmp` and executed as `root` via `su`. |
+[`deploy.py`](deploy.py) mirrors the repository's `android/` and `debian/` trees
+onto a rooted Android device over ADB (USB or TCP) and applies the expected
+ownership and file permissions.
 
 ## Prerequisites
 
+- Python 3.8+ on the host (uses only the Python standard library).
 - Authorized ADB connection over USB (`adb devices`) or TCP (`PHONE_IP:5555`).
 - Magisk root (`su` grants `uid=0(root)`).
 - Existing Debian chroot directory on Android (default:
@@ -23,31 +16,30 @@ file permissions.
 
 ## Usage
 
-Preview destination paths and permissions first with `--dry-run` / `-DryRun`:
+Preview destination paths and permissions locally with `--dry-run` (does not
+require a connected device):
 
 ```sh
-# Linux / macOS / WSL2 (connected USB device)
-./scripts/deploy.sh --dry-run
-./scripts/deploy.sh
+# Linux / macOS / WSL2
+python3 scripts/deploy.py --dry-run
+python3 scripts/deploy.py
 
 # TCP ADB (defaults to port 5555)
-./scripts/deploy.sh -t PHONE_IP
+python3 scripts/deploy.py -t PHONE_IP
 
 # Custom ADB binary or Debian chroot path
-./scripts/deploy.sh -s SERIAL --adb adb.exe --debian-root /data/local/chroot-distro/debian-trixie
+python3 scripts/deploy.py -s SERIAL --adb adb.exe --debian-root /data/local/chroot-distro/debian-trixie
 ```
 
 ```powershell
-# Windows PowerShell (connected USB device)
-.\scripts\deploy.ps1 -DryRun
-.\scripts\deploy.ps1
-
-# TCP ADB (defaults to port 5555)
-.\scripts\deploy.ps1 -Target PHONE_IP
-
-# PowerShell built-in help
-Get-Help .\scripts\deploy.ps1 -Full
+# Windows (PowerShell or Command Prompt)
+py scripts\deploy.py --dry-run
+py scripts\deploy.py -t PHONE_IP
 ```
+
+In WSL2, `deploy.py` automatically falls back to Windows `adb.exe` when Linux
+`adb` has no ready devices. Run `python3 scripts/deploy.py --help` (or
+`py scripts\deploy.py --help` on Windows) for all options.
 
 ## Destination and Permission Mapping
 
@@ -66,8 +58,8 @@ untouched.
 
 ## Notes
 
-- **First-time `sshd` setup:** `install-on-device.sh` copies `/etc/sv/sshd` into
-  the Debian rootfs, but does not create `/etc/service/sshd` automatically. See
+- **First-time `sshd` setup:** `deploy.py` copies `/etc/sv/sshd` into the Debian
+  rootfs, but does not create `/etc/service/sshd` automatically. See
   [boot-services.md](../docs/setup/boot-services.md#1-prepare-debian) to switch
   from packaged `ssh` to runit `sshd`.
 - **Disabled `service.d` scripts:** Mirroring sets `service.d/*` to mode `700`.

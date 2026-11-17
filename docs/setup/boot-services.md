@@ -8,23 +8,23 @@ printer is idle with heaters off, and keep an authorized ADB connection availabl
 
 ## Automated ADB deployment (optional)
 
-From a workstation with authorized ADB root (`su`) over USB or TCP, you can
-mirror `android/` and `debian/` onto the phone with one command:
+From a workstation with Python 3 and authorized ADB root (`su`) over USB or TCP,
+you can mirror `android/` and `debian/` onto the phone with one command:
 
 ```sh
 # Linux / macOS / WSL2 (preview first, then apply)
-./scripts/deploy.sh --dry-run
-./scripts/deploy.sh -t PHONE_IP:5555
+python3 scripts/deploy.py --dry-run
+python3 scripts/deploy.py -t PHONE_IP:5555
 ```
 
 ```powershell
-# Windows PowerShell (USB or TCP)
-.\scripts\deploy.ps1 -DryRun
-.\scripts\deploy.ps1 -Target PHONE_IP:5555
+# Windows (PowerShell or Command Prompt)
+py scripts\deploy.py --dry-run
+py scripts\deploy.py -t PHONE_IP:5555
 ```
 
-Pass `--debian-root PATH` (`-DebianRoot PATH`) if your chroot is not at
-`/data/local/chroot-distro/debian-trixie`. In WSL2, `deploy.sh` automatically
+Pass `--debian-root PATH` if your chroot is not at
+`/data/local/chroot-distro/debian-trixie`. In WSL2, `deploy.py` automatically
 falls back to `adb.exe` when no device is attached to Linux `adb`. The script
 mirrors `android/` into `/` (`600` for `common.sh`, `700` for `service.d/`, `755`
 for `modules/*/system/bin/`, `644` otherwise) and `debian/` into the Debian

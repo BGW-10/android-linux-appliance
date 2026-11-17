@@ -1,8 +1,1 @@
 * text=auto eol=lf
-*.sh text eol=lf
-*.ps1 text eol=lf
-*.cfg text eol=lf
-*.md text eol=lf
-debian/usr/local/bin/* text eol=lf
-debian/etc/sv/sshd/run text eol=lf
-debian/etc/sv/sshd/log/run text eol=lf

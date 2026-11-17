@@ -224,7 +224,7 @@ Start with the phone disconnected and a current-limited supply/electronic load:
 
 The [userspace charging-inhibit service](usb-power.md#optional-charging-inhibition)
 is the additional software layer after electrical qualification. Keep its two
-enable/qualification flags off until then. Manual [fake SOC](fake-soc.md) changes
+enable/qualification flags off until then. Manual [fake SOC](kernel.md#9-manual-fake-soc) changes
 reported capacity; it does not inhibit charging or replace electrical protection.
 No automatic fake SOC, thermal bypass, or kernel source change is required for
 this hardware plan.

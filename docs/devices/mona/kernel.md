@@ -1,11 +1,13 @@
-# Mona kernel configuration and Image build
+# Mona kernel, modules, and manual fake SOC
 
 [Mona index](README.md) · [Sources](../../reference/sources.md)
 
-This builds the base `Image` and shows boot-image repacking. **It does not build
-or package the vendor modules required for fake SOC.** The charger is modular;
-see [fake-SOC deployment](fake-soc.md#configuration-and-build) before planning
-that change. The source repo lacks the complete Motorola Bazel/vendor workspace.
+This covers building the base `Image`, boot-image repacking, flashing and
+recovery, rebuilding an individual compatible in-tree module (such as
+`qti_battery_charger.ko`), and configuring/verifying
+[manual fake SOC](#9-manual-fake-soc). **It does not build or package Motorola's
+complete out-of-tree `vendor_dlkm` module distribution.** The source repo lacks
+the complete Motorola Bazel/vendor workspace.
 
 Run host commands in **Bash on x86-64 Linux/WSL**, with sources on the Linux
 filesystem. Clone the review branch beside your appliance checkout if needed:
@@ -53,7 +55,7 @@ On Debian/Ubuntu, install the host programs and headers first:
 # install host packages.
 sudo apt update
 sudo apt install git repo build-essential bc bison flex libelf-dev libssl-dev \
-  libncurses-dev dwarves python3 curl ca-certificates rsync cpio lz4 zstd file unzip adb
+  libncurses-dev dwarves python3 curl ca-certificates rsync cpio lz4 zstd file unzip adb fastboot
 # confirm Repo is available.
 repo version
 ```
@@ -347,12 +349,304 @@ If any comparison fails, do not use `boot-custom.img`. Inspect `magiskboot`
 output for warnings. These checks cannot prove bootloader acceptance or
 compatibility with installed vendor modules. Keep `boot-stock.img` for recovery.
 
-## 7. Before any boot or flash attempt
+## 7. Test-boot, flash, and recover `boot-custom.img`
 
-Before testing `boot-custom.img`, verify the exact firmware, active slot,
-partition size, bootloader unlock state, and device-specific flashing
-procedure. Back up user data before unlocking the bootloader. Keep matching
-stock images for recovery, and do not relock with custom images installed.
+Before any boot or flash attempt, verify the exact firmware match, active slot,
+partition size, and unlocked bootloader state. Back up user data before unlocking
+the bootloader. Keep `$BOOT_WORK/boot-stock.img` (and matching stock firmware
+images) for recovery, and **do not relock the bootloader with custom images
+installed**.
+
+### Pre-flash checks on the Linux host
+
+If you opened a new terminal, set `BOOT_WORK` to the `mona-boot-work.*` directory
+created in section 6 before running these checks:
+
+```bash
+test -s "$BOOT_WORK/boot-stock.img"
+test -s "$BOOT_WORK/boot-custom.img"
+SLOT="$(tr -d '\r\n' < "$BOOT_WORK/active-slot.txt")"
+case "$SLOT" in _a|_b) ;; *) echo "Unexpected slot: $SLOT" >&2; exit 1 ;; esac
+test "$(stat -c %s "$BOOT_WORK/boot-custom.img")" -le "$(stat -c %s "$BOOT_WORK/boot-stock.img")"
+```
+
+### Enter fastboot and check slot state
+
+```bash
+adb reboot bootloader
+fastboot devices
+fastboot getvar current-slot
+fastboot getvar unlocked
+```
+
+Confirm `current-slot` matches `SLOT` (`_a` -> `a`, `_b` -> `b`) and the
+bootloader reports unlocked before writing anything. On WSL, if `fastboot`
+cannot see the phone in bootloader mode, attach the fastboot USB device to WSL
+with `usbipd` or run the `fastboot` commands from Windows using copies of
+`boot-custom.img` and `boot-stock.img`.
+
+### Optional one-shot test-boot
+
+If supported by your bootloader, test-boot `boot-custom.img` in memory without
+modifying the `boot` partition:
+
+```bash
+fastboot boot "$BOOT_WORK/boot-custom.img"
+```
+
+A reboot returns to the installed image if the test boot fails or hangs. Some
+Motorola bootloaders reject `fastboot boot` with unsigned/repacked payloads or
+do not pass the same boot arguments as a partition boot; if `fastboot boot` is
+refused, proceed to flashing only once you are ready to recover via fastboot.
+
+### Flash the active slot and verify
+
+Flash the exact active-slot `boot` partition backed up in section 6 (do not
+substitute `init_boot` or `vendor_boot`):
+
+```bash
+fastboot flash "boot${SLOT}" "$BOOT_WORK/boot-custom.img"
+fastboot reboot
+```
+
+Once Android boots, confirm the new kernel, active slot, loaded modules, and
+attached USB peripherals:
+
+```bash
+adb wait-for-device
+adb shell uname -a
+adb shell getprop ro.boot.slot_suffix
+```
+
+In an **Android root shell** (`adb shell`, then `su`), verify config flags and
+module loading:
+
+```sh
+zcat /proc/config.gz 2>/dev/null | grep -E 'CONFIG_(USB_ACM|USB_SERIAL_CH341|USB_SERIAL_CP210X|USB_SERIAL_FTDI_SIO|USB_SERIAL_PL2303|VIDEO_DEV|USB_VIDEO_CLASS)='
+lsmod | head -n 30
+dmesg | tail -n 60
+```
+
+Confirm stock vendor modules (including `qti_battery_charger` and display/radio
+drivers) still load cleanly alongside the custom `Image`. Keep
+`$BOOT_WORK/boot-stock.img` off the phone.
+
+### Roll back to stock
+
+If Android fails to boot or required vendor modules fail to load, enter
+fastboot with the phone's hardware keys (or `adb reboot bootloader` if ADB is
+reachable) and restore the stock image:
+
+```bash
+fastboot devices
+fastboot flash "boot${SLOT}" "$BOOT_WORK/boot-stock.img"
+fastboot reboot
+```
+
+If running from another terminal, substitute the actual `_a` or `_b` slot and
+the full path to `boot-stock.img`.
+
+## 8. Rebuild an individual in-tree module (`qti_battery_charger.ko`)
+
+**An `Image`-only replacement is insufficient for fake SOC.** Because
+`CONFIG_QTI_BATTERY_CHARGER=m`, `drivers/power/supply/qti_battery_charger.c` is
+loaded from `/vendor_dlkm/lib/modules/qti_battery_charger.ko`.
+
+When `# CONFIG_MODULE_SIG_FORCE is not set` and `CONFIG_MODVERSIONS=y` on the
+running kernel (confirmed on Mona build `W1VAS36.62-22-26-7-2-3`), an unsigned
+in-tree module can be rebuilt against the running kernel's `/proc/config.gz`
+and tested live without reflashing `boot` or `/vendor_dlkm`. With
+`CONFIG_MODVERSIONS=y` and a `__versions` CRC table present, Linux's module
+loader ignores the `UTS_RELEASE` prefix before the first space in `vermagic`
+(such as `6.6.118-android15-8-maybe-dirty-4k`) and enforces the trailing flags
+plus symbol CRCs.
+
+### Check module requirements on the phone
+
+In an **Android root shell** (`adb shell`, then `su`):
+
+```sh
+modinfo /vendor_dlkm/lib/modules/qti_battery_charger.ko
+lsmod | grep -E 'qti_battery|mmi_charger|glink'
+zcat /proc/config.gz 2>/dev/null | grep -E 'MODULE_SIG|MODVERSIONS|RANDSTRUCT|QTI_PMIC_GLINK_CLIENT_DEBUG|QTI_BATTERY_CHARGER'
+```
+
+On the inspected phone, `qti_battery_charger.ko` reported:
+
+- `vermagic`: `6.6.118-android15-8-maybe-dirty-4k SMP preempt mod_unload modversions aarch64`
+- `depends`: `qti_pmic_glink,panel_event_notifier`
+- Active dependents in `lsmod`: `leds_qpnp_flash_v2`, `qcom_hv_haptics`, `qcom_spmi_wled`
+- `# CONFIG_MODULE_SIG_FORCE is not set`, `CONFIG_MODVERSIONS=y`
+
+If `CONFIG_MODULE_SIG_FORCE=y` or `CONFIG_RANDSTRUCT_FULL=y` on a later build,
+a standalone `.ko` build will not load onto the stock `Image`, and you must
+rebuild and package the matching kernel and full module set together instead.
+
+### Pull the running `.config` and stock `.ko`
+
+On the Linux/WSL host:
+
+```bash
+mkdir -p ~/phone-appliance/mona-mod
+cd ~/phone-appliance/mona-mod
+adb pull /vendor_dlkm/lib/modules/qti_battery_charger.ko ./qti_battery_charger.stock.ko
+adb shell "su -c 'zcat /proc/config.gz'" > running.config
+```
+
+### Compile `qti_battery_charger.ko` and verify CRCs
+
+In the Mona kernel repository (`moto-g-stylus-2025-kernel`, `mona-appliance`
+branch), `arch/arm64/configs/vendor/ext_config/moto-parrot-mona.config` already
+sets `CONFIG_QTI_PMIC_GLINK_CLIENT_DEBUG=y`. To match your running `Image`'s
+symbol CRCs directly, start from `running.config` inside `android-kernel-env`
+(using the same `KERNEL_SRC`, `KERNEL_OUT`, `HOST_CFLAGS`, `HOST_LDFLAGS`,
+`PATH`, and `LD_LIBRARY_PATH` environment from section 3) and enable
+`QTI_PMIC_GLINK_CLIENT_DEBUG`:
+
+```bash
+mkdir -p "$KERNEL_OUT/tmp"
+cp ~/phone-appliance/mona-mod/running.config "$KERNEL_OUT/.config"
+"$KERNEL_SRC/scripts/config" --file "$KERNEL_OUT/.config" --enable QTI_PMIC_GLINK_CLIENT_DEBUG
+
+make -C "$KERNEL_SRC" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
+  HOSTCFLAGS="$HOST_CFLAGS" HOSTLDFLAGS="$HOST_LDFLAGS" olddefconfig
+
+grep -E 'CONFIG_(RPMSG|DEBUG_FS|QTI_PMIC_GLINK|QTI_PMIC_GLINK_CLIENT_DEBUG|QTI_BATTERY_CHARGER)=' "$KERNEL_OUT/.config"
+
+make -C "$KERNEL_SRC" O="$KERNEL_OUT" ARCH=arm64 LLVM=1 \
+  HOSTCFLAGS="$HOST_CFLAGS" HOSTLDFLAGS="$HOST_LDFLAGS" -j"$(nproc)" Image modules
+```
+
+Expect:
+
+```text
+CONFIG_RPMSG=y
+CONFIG_DEBUG_FS=y
+CONFIG_QTI_PMIC_GLINK=m
+CONFIG_QTI_PMIC_GLINK_CLIENT_DEBUG=y
+CONFIG_QTI_BATTERY_CHARGER=m
+```
+
+`CONFIG_QTI_PMIC_GLINK_CLIENT_DEBUG` depends only on `QTI_PMIC_GLINK && DEBUG_FS`
+and selects no additional options.
+
+Before loading on the phone, compare `vermagic` and imported symbol CRCs
+against the stock `.ko` on the host:
+
+```bash
+modinfo "$KERNEL_OUT/drivers/power/supply/qti_battery_charger.ko" | grep -E 'vermagic|depends'
+diff -u \
+  <(modprobe --dump-modversions ~/phone-appliance/mona-mod/qti_battery_charger.stock.ko | sort) \
+  <(modprobe --dump-modversions "$KERNEL_OUT/drivers/power/supply/qti_battery_charger.ko" | sort)
+```
+
+Confirm the trailing `vermagic` tokens are `SMP preempt mod_unload modversions aarch64`
+and that shared imported symbol CRCs match.
+
+### Live-test on the phone without modifying `/vendor_dlkm`
+
+Because `leds_qpnp_flash_v2`, `qcom_hv_haptics`, and `qcom_spmi_wled` hold
+references to `qti_battery_charger`, unload them first, swap
+`qti_battery_charger.ko`, and reload them. A reboot reverts back to the stock
+`/vendor_dlkm` module cleanly:
+
+```sh
+adb push "$KERNEL_OUT/drivers/power/supply/qti_battery_charger.ko" /data/local/tmp/qti_battery_charger.ko
+adb shell
+su
+
+# Inspect exact .ko filenames under /vendor_dlkm/lib/modules/ before reloading.
+ls /vendor_dlkm/lib/modules/*flash* /vendor_dlkm/lib/modules/*haptics* /vendor_dlkm/lib/modules/*wled*
+
+rmmod leds_qpnp_flash_v2 qcom_hv_haptics qcom_spmi_wled
+rmmod qti_battery_charger
+insmod /data/local/tmp/qti_battery_charger.ko
+
+# Reload the three dependent modules using their exact filenames from the ls output:
+insmod /vendor_dlkm/lib/modules/<leds-flash>.ko
+insmod /vendor_dlkm/lib/modules/<haptics>.ko
+insmod /vendor_dlkm/lib/modules/<wled>.ko
+```
+
+If `insmod` fails, inspect `dmesg | tail -n 30`. Once loaded, run the verification
+steps in section 9 below.
+
+## 9. Manual fake SOC
+
+Enabling `CONFIG_QTI_PMIC_GLINK_CLIENT_DEBUG=y` activates the existing capacity
+override and `power_supply_changed()` notification in
+`drivers/power/supply/qti_battery_charger.c`. No driver changes or boot-time
+writes are needed; the driver initializes `fake_soc` to `-EINVAL` (`-22`), so
+normal reporting remains the default.
+
+### Additional debug controls
+
+`CONFIG_QTI_PMIC_GLINK_CLIENT_DEBUG` covers more than fake SOC. Kconfig
+explicitly warns against enabling it on production devices because writes can
+change physical parameters and cause instability. In this tree it also enables:
+
+- `battery_debug/votables/<name>/override` (debugfs, mode `0600`) in
+  `qti_battery_debug.c`: writes send charging-vote overrides to firmware.
+- `altmode/send_pan_en` and `altmode/send_pan_ack` (debugfs, mode `0200`) in
+  `altmode-glink.c`: writes trigger USB alternate-mode protocol messages.
+
+Both associated drivers are already configured as modules. The controls appear
+when rebuilt drivers probe successfully and debugfs is accessible. Enabling the
+flag does not itself write overrides, but these privileged interfaces expand what
+a process with sufficient access can change. Leave them unused; preserve SELinux
+and existing debugfs access restrictions. `battery_charger/block_tx` is already
+gated by `DEBUG_FS` independently of this option, and `QTI_PMIC_GLINK_DEBUG` is
+a separate existing option.
+
+This config flag is used because it activates Qualcomm's existing implementation
+without source patches; a fake-SOC-only Kconfig option would require a separate
+driver patch if the extra debug controls are unacceptable.
+
+### Verify and operate `fake_soc`
+
+Before setting an override, confirm `fake_soc` reads `-22`. Record battery
+`capacity`, `voltage_now`, `current_now`, and `temp` from
+`/sys/class/power_supply/battery/`:
+
+```sh
+adb shell "su -c 'echo 80 > /sys/class/qcom-battery/fake_soc'"
+adb shell "su -c 'cat /sys/class/qcom-battery/fake_soc'"
+adb shell "su -c 'cat /sys/class/power_supply/battery/capacity'"
+adb shell dumpsys battery
+adb shell "su -c 'cat /sys/class/power_supply/battery/voltage_now /sys/class/power_supply/battery/current_now /sys/class/power_supply/battery/temp'"
+```
+
+Expect `fake_soc` and kernel capacity to read `80`, and Android's level to
+update to `80`. Voltage, current, and temperature retain their existing
+measurement paths and may vary between samples. Android's health stack must
+consume this power supply for the Android level to follow it. If only `fake_soc`
+changes, verify the loaded charger module was rebuilt; if kernel capacity
+changes but Android's level does not, inspect the health HAL's source (including
+`mmi_battery`) and any active Android battery simulation.
+
+Restore normal reporting and repeat the capacity/Android checks:
+
+```sh
+adb shell "su -c 'echo -22 > /sys/class/qcom-battery/fake_soc'"
+```
+
+Only values from `0` through `100` activate the override; `-22` restores the
+default sentinel. A reboot leaves the override inactive, and no automatic boot
+activation is supplied by default.
+
+This changes reported Linux capacity, **not** firmware fuel-gauge state or
+charging status (`Discharging`). Thermal, charging, and low-voltage protection
+code is unchanged. Firmware shutdowns can still occur, and other consumers of
+reported capacity can change behavior. The capacity getter still reads firmware
+before applying the override, so fake SOC is not a bypass for GLINK read
+failures.
+
+The 2026-10-16 phone inspection also found `bcl_soc`, which computes battery
+depletion as `100 - battery/capacity`. A working override of `80` therefore
+reports `20` in the `socd` thermal zone and affects depletion-based mitigation.
+Separate voltage/current BCL protection remains active. See
+[battery-replacement power](power.md) for live observations, XL4015
+power-delivery considerations, and recovery.
 
 ## References
 

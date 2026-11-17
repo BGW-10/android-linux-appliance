@@ -110,12 +110,12 @@ selected node and effect on USB host mode are understood.
 
 ## Capacity and recovery
 
-[Manual fake SOC](fake-soc.md) changes reported capacity after the charger
-module is rebuilt. It does not inhibit charging, repair supply transients,
-change the firmware gauge, or guarantee recovery after total power loss.
-Do not use `dumpsys battery set` as a permanent workaround: it freezes Android's
-battery snapshot, including temperature updates. If a previous test used it,
-`dumpsys battery reset` restores normal updates.
+[Manual fake SOC](kernel.md#9-manual-fake-soc) changes reported capacity after the
+charger module is rebuilt. It does not inhibit charging, repair supply
+transients, change the firmware gauge, or guarantee recovery after total power
+loss. Do not use `dumpsys battery set` as a permanent workaround: it freezes
+Android's battery snapshot, including temperature updates. If a previous test
+used it, `dumpsys battery reset` restores normal updates.
 
 An upstream UPS can cover input interruptions. Automatic power-on after supply
 loss is a separate bootloader/hardware question; Magisk cannot start a powered-off

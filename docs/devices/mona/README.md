@@ -19,8 +19,7 @@ AI assistance. See [sources](../../reference/sources.md#ai-usage) and the
 
 | Guide | Scope |
 | --- | --- |
-| [Kernel build](kernel.md) | Persistent config merging, toolchain/sysroot, base Image, and boot-image repacking. |
-| [Manual fake SOC](fake-soc.md) | Debug-option tradeoffs, required charger-module rebuild, manual enable/restore. |
+| [Kernel, modules, and fake SOC](kernel.md) | Config merging, toolchain/sysroot, base `Image`, boot repacking, `qti_battery_charger.ko` rebuild, and manual fake SOC. |
 | [Battery-replacement supply](power.md) | XL4015 input/output requirements, original PCB, transients, and recovery. |
 | [USB-C power protection](usb-power.md) | Hardware blocker, USB roles, optional one-shot charging policy, and reset limits. |
 | [Hardware and printed cover](hardware.md) | Ranked module search terms, required specifications, GX12 wiring, and enclosure design. |
@@ -28,9 +27,9 @@ AI assistance. See [sources](../../reference/sources.md#ai-usage) and the
 | [Validation record](validation.md) | Dated observations, completed checks, and deployment work still pending. |
 
 **Fake SOC is not deployed yet.** The persistent option was validated, but the
-loaded `qti_battery_charger.ko` must be rebuilt and packaged with a matching
-kernel/module set. An Image-only replacement cannot enable it. Keep fake SOC
-inactive until explicitly set; no automatic boot override is supplied.
+loaded `qti_battery_charger.ko` must be rebuilt and deployed alongside or
+matched to the running kernel. An `Image`-only replacement cannot enable it. Keep
+fake SOC inactive until explicitly set; no automatic boot override is supplied.
 
 The hardware candidates and charging inhibition remain electrically unqualified.
 See [sources](../../reference/sources.md) for the inspected kernel revision.

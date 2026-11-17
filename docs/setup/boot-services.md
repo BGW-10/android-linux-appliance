@@ -6,6 +6,31 @@ The files mirror their Android or Debian destination paths. Edit the few
 settings directly in each script, then copy the files you want. Work while the
 printer is idle with heaters off, and keep an authorized ADB connection available.
 
+## Automated ADB deployment (optional)
+
+From a workstation with authorized ADB root (`su`) over USB or TCP, you can
+mirror `android/` and `debian/` onto the phone with one command:
+
+```sh
+# Linux / macOS / WSL2 (preview first, then apply)
+./scripts/deploy.sh --dry-run
+./scripts/deploy.sh -t PHONE_IP:5555
+```
+
+```powershell
+# Windows PowerShell (USB or TCP)
+.\scripts\deploy.ps1 -DryRun
+.\scripts\deploy.ps1 -Target PHONE_IP:5555
+```
+
+Pass `--debian-root PATH` (`-DebianRoot PATH`) if your chroot is not at
+`/data/local/chroot-distro/debian-trixie`. In WSL2, `deploy.sh` automatically
+falls back to `adb.exe` when no device is attached to Linux `adb`. The script
+mirrors `android/` into `/` (`600` for `common.sh`, `700` for `service.d/`, `755`
+for `modules/*/system/bin/`, `644` otherwise) and `debian/` into the Debian
+rootfs (`755` for scripts/binaries, `644` otherwise), skipping `.gitkeep` and
+leaving `klipper/` untouched.
+
 ## 1. Prepare Debian
 
 Inside the Debian chroot, as root, clone a local copy if you do not already

@@ -28,12 +28,12 @@ assistance. See [sources and validation](reference/sources.md#ai-usage).
 | [ADB and network access](android/adb.md) | USB/root shells, TCP 5555, address changes, and recovery. |
 | [Build/install Android iw](android/iw.md) | NDK build and the existing Magisk binary overlay. |
 | [Android package trimming](android/debloat.md) | Reversible package changes and the historical OnePlus package list. |
-| [Sources and revisions](reference/sources.md) | Imported documentation, source snapshots, validation scope, and old page locations. |
+| [Sources and revisions](reference/sources.md) | Imported documentation, source snapshots, and validation scope. |
 
 Kernel instructions run in the corresponding **kernel checkout**. The scripts
 and service definitions live in this repository. Hardware proposals and old
 observations are labeled separately from steps already validated on a phone.
 
 Maintain installation, build, recovery, and appliance guides here. The kernel
-fork READMEs link to these device guides. See the
-[review branches and old page locations](reference/sources.md#kernel-fork-documentation).
+fork READMEs link to these device guides. See
+[kernel fork documentation](reference/sources.md#kernel-fork-documentation).

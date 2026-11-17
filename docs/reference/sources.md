@@ -56,34 +56,6 @@ were removed from the kernel review branches, whose READMEs link here:
 Kernel sources, configuration, and build tools stay in their kernel forks.
 The original guides remain available in the pinned source snapshots above.
 
-| Removed kernel page | Maintained guide |
-| --- | --- |
-| Mona `docs/mona/README.md` | [Mona index](../devices/mona/README.md) |
-| Mona `docs/mona/building.md` | [Kernel build](../devices/mona/kernel.md) |
-| Mona `docs/mona/fake-soc.md` | [Manual fake SOC](../devices/mona/fake-soc.md) |
-| Mona `docs/mona/appliance.md` | [Power](../devices/mona/power.md), [performance](../devices/mona/performance.md), [validation](../devices/mona/validation.md) |
-| Mona `docs/mona/usb-power.md` | [USB-C protection](../devices/mona/usb-power.md) |
-| Mona `docs/mona/hardware.md` | [Hardware and printed cover](../devices/mona/hardware.md) |
-| OnePlus `docs/BUILD_INSTALL.md` | [Kernel build and recovery](../devices/oneplus5/kernel.md) |
-| OnePlus `docs/MAINTAINER_SETUP.md` | [Kernel maintenance](../devices/oneplus5/kernel-maintenance.md) |
-
-## Old appliance page locations
-
-| Previous appliance page | Current guide |
-| --- | --- |
-| `root-lineageos-debian-guide.md` | [OnePlus ROM/root](../devices/oneplus5/lineageos-root.md), [Debian](../setup/debian.md), [boot scripts](../setup/boot-services.md) |
-| `debian-architecture-explained.md` | [Architecture](../architecture.md) |
-| `kernel-build-guide.md` | [OnePlus kernel build/recovery](../devices/oneplus5/kernel.md) |
-| `kernel-modification-maintainer-guide.md` | [OnePlus kernel maintenance](../devices/oneplus5/kernel-maintenance.md) |
-| `aosp-iw-android-build-guide.md` | [Android iw](../android/iw.md) |
-| `android-debloat.md` | [Android package trimming](../android/debloat.md) |
-| `mona-appliance.md` | [Shared boot scripts](../setup/boot-services.md), [Mona](../devices/mona/README.md) |
-| `runit.md` | [Service management](../services/runit.md) |
-
-Two small compatibility pages remain at `mona-appliance.md` and `runit.md` for
-existing links. Full historical text remains in the source snapshots above;
-it is not a second installation path in the current docs.
-
 ## How to read validation claims
 
 - **Observed:** a dated phone/source result carried from the investigation.

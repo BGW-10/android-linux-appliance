@@ -43,6 +43,7 @@ Magisk service.d
 | `android/data/adb/modules/` | Existing Magisk binary overlay. |
 | `debian/` | Chroot launcher and SSH runit service; add your own services here. |
 | `klipper/ender3-v3-ke/` | Existing printer-specific configuration; review paths and hardware before use. |
+| `scripts/` | Host ADB deploy wrappers (`deploy.sh`, `deploy.ps1`) and on-device installer. |
 | `docs/` | Shared setup, Android tools, services, and device-specific instructions. |
 
 Settings live at the top of each script. Add Debian services by creating an
